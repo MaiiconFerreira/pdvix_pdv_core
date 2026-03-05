@@ -1,0 +1,1638 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDVix</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════
+   TOKENS
+════════════════════════════════════════════════════════════ */
+:root{
+  --bg:        #EEF0F4;
+  --surf:      #FFFFFF;
+  --surf2:     #F7F9FC;
+  --border:    #DDE2EB;
+  --border2:   #C8D0DC;
+  --pri:       #0D9488;
+  --pri-h:     #0F766E;
+  --pri-lt:    #CCFBF1;
+  --pri-txt:   #134E4A;
+  --txt:       #0F172A;
+  --txt2:      #475569;
+  --txt3:      #94A3B8;
+  --red:       #EF4444;
+  --red-lt:    #FEE2E2;
+  --grn:       #10B981;
+  --grn-lt:    #D1FAE5;
+  --amb:       #F59E0B;
+  --amb-lt:    #FEF3C7;
+  --blue:      #3B82F6;
+  --blue-lt:   #DBEAFE;
+  --r:         10px;
+  --r-lg:      16px;
+  --r-sm:      6px;
+  --sh:        0 1px 4px rgba(0,0,0,.07), 0 2px 8px rgba(0,0,0,.04);
+  --sh-lg:     0 8px 24px rgba(0,0,0,.10), 0 2px 8px rgba(0,0,0,.06);
+  --fui:       'Outfit', sans-serif;
+  --fmono:     'JetBrains Mono', monospace;
+  --trans:     .15s ease;
+}
+*{box-sizing:border-box;outline:none;margin:0;padding:0}
+html,body{height:100%;font-family:var(--fui);background:var(--bg);color:var(--txt);font-size:14px;-webkit-font-smoothing:antialiased}
+input,button,select{font-family:var(--fui)}
+.hidden{display:none!important}
+
+/* ═══════════════════════════════════════════════════════════
+   SCREEN ROUTER
+════════════════════════════════════════════════════════════ */
+.screen{height:100vh;width:100vw;display:none;flex-direction:column;overflow:hidden}
+.screen.active{display:flex}
+
+/* ═══════════════════════════════════════════════════════════
+   BUTTONS
+════════════════════════════════════════════════════════════ */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 18px;border-radius:var(--r-sm);font-size:13px;font-weight:600;cursor:pointer;border:none;transition:var(--trans);user-select:none}
+.btn-pri{background:var(--pri);color:#fff}.btn-pri:hover{background:var(--pri-h)}
+.btn-ghost{background:transparent;color:var(--txt2);border:1.5px solid var(--border)}.btn-ghost:hover{border-color:var(--border2);background:var(--surf2)}
+.btn-danger{background:var(--red);color:#fff}.btn-danger:hover{background:#DC2626}
+.btn-success{background:var(--grn);color:#fff}.btn-success:hover{background:#059669}
+.btn-amber{background:var(--amb);color:#fff}.btn-amber:hover{background:#D97706}
+.btn-lg{padding:14px 28px;font-size:15px;border-radius:var(--r)}
+.btn-full{width:100%}
+.btn:disabled{opacity:.45;cursor:not-allowed;pointer-events:none}
+.btn-icon{padding:9px;border-radius:var(--r-sm);background:var(--surf2);border:1.5px solid var(--border);color:var(--txt2);cursor:pointer;transition:var(--trans)}.btn-icon:hover{border-color:var(--border2)}
+
+/* ═══════════════════════════════════════════════════════════
+   INPUTS
+════════════════════════════════════════════════════════════ */
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--txt2)}
+.inp{width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--r-sm);background:var(--surf);color:var(--txt);font-size:14px;transition:var(--trans)}
+.inp:focus{border-color:var(--pri);box-shadow:0 0 0 3px rgba(13,148,136,.12)}
+.inp-lg{padding:14px 18px;font-size:16px;border-radius:var(--r)}
+.inp-code{font-family:var(--fmono);font-size:20px;letter-spacing:.04em}
+
+/* ═══════════════════════════════════════════════════════════
+   MODAL OVERLAY
+════════════════════════════════════════════════════════════ */
+.overlay{position:fixed;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:500;padding:20px}
+.overlay.open{display:flex}
+.modal-card{background:var(--surf);border-radius:var(--r-lg);box-shadow:var(--sh-lg);width:100%;overflow:hidden;animation:fadeUp .18s ease both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.modal-header{padding:20px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.modal-title{font-size:16px;font-weight:700;color:var(--txt)}
+.modal-subtitle{font-size:12px;color:var(--txt3);margin-top:2px}
+.modal-body{padding:20px 24px}
+.modal-footer{padding:14px 24px 20px;display:flex;gap:10px;justify-content:flex-end}
+.modal-close{background:none;border:none;cursor:pointer;color:var(--txt3);font-size:18px;transition:var(--trans)}.modal-close:hover{color:var(--txt)}
+
+/* ═══════════════════════════════════════════════════════════
+   TABS
+════════════════════════════════════════════════════════════ */
+.tabs{display:flex;border-bottom:1.5px solid var(--border);margin-bottom:18px}
+.tab-btn{padding:8px 16px;font-size:13px;font-weight:600;color:var(--txt3);background:none;border:none;border-bottom:2.5px solid transparent;cursor:pointer;margin-bottom:-1.5px;transition:var(--trans)}
+.tab-btn.active{color:var(--pri);border-bottom-color:var(--pri)}
+.tab-panel{display:none}.tab-panel.active{display:block}
+
+/* ═══════════════════════════════════════════════════════════
+   SCREEN: LOGIN
+════════════════════════════════════════════════════════════ */
+#screen-login{align-items:center;justify-content:center;background:linear-gradient(135deg,#F0F7FF 0%,#EEF0F4 60%,#E8F5F3 100%)}
+.login-card{background:var(--surf);border-radius:var(--r-lg);box-shadow:var(--sh-lg);padding:40px;width:380px;max-width:100%}
+.login-logo{text-align:center;margin-bottom:32px}
+.login-logo img{height:56px;object-fit:contain}
+.login-logo h1{font-size:22px;font-weight:800;color:var(--pri);margin-top:10px;letter-spacing:-.5px}
+.login-logo p{font-size:12px;color:var(--txt3);margin-top:2px}
+.login-form .field+.field{margin-top:14px}
+.login-form .btn-pri{margin-top:22px}
+.login-online{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--txt3);margin-top:16px;justify-content:center}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--txt3)}
+.dot.online{background:var(--grn)}
+.dot.offline{background:var(--red)}
+.login-err{background:var(--red-lt);color:var(--red);border-radius:var(--r-sm);padding:10px 14px;font-size:13px;font-weight:500;margin-top:12px;display:none}
+
+/* ═══════════════════════════════════════════════════════════
+   SCREEN: PDV
+════════════════════════════════════════════════════════════ */
+#screen-pdv{display:none;flex-direction:column;height:100vh}
+#screen-pdv.active{display:flex}
+
+/* Header */
+.pdv-header{background:var(--surf);border-bottom:1.5px solid var(--border);padding:0 18px;display:grid;grid-template-columns:auto 1fr auto auto auto auto;align-items:center;gap:18px;height:64px;flex-shrink:0;box-shadow:var(--sh)}
+.pdv-logo img{height:38px;object-fit:contain}
+.header-client{min-width:0}
+.header-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--txt3)}
+.header-val{font-size:14px;font-weight:700;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.header-last{max-width:220px}
+.status-chip{padding:5px 12px;border-radius:20px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;background:var(--surf2);color:var(--txt3);border:1.5px solid var(--border)}
+.status-chip.aberta{background:var(--grn-lt);color:#065F46;border-color:#6EE7B7}
+.status-chip.livre{background:var(--surf2);color:var(--txt3)}
+.header-user{display:flex;flex-direction:column;align-items:flex-end}
+.online-badge{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600}
+.online-badge .dot{width:8px;height:8px}
+
+/* Input bar */
+.pdv-input-bar{background:var(--surf);border-bottom:1.5px solid var(--border);padding:10px 18px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.qty-wrap{display:flex;flex-direction:column;gap:3px;width:90px;flex-shrink:0}
+.qty-wrap label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--txt3)}
+#input-qtd{font-family:var(--fmono);font-size:18px;font-weight:600;text-align:center;padding:8px 10px;border:2px solid var(--border);border-radius:var(--r-sm);color:var(--pri);background:var(--surf)}
+#input-qtd:focus{border-color:var(--pri)}
+.barcode-wrap{flex:1;display:flex;flex-direction:column;gap:3px}
+.barcode-wrap label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--txt3)}
+#input-codigo{font-family:var(--fmono);font-size:20px;font-weight:600;padding:8px 14px;border:2px solid var(--border);border-radius:var(--r-sm);color:var(--txt);background:var(--surf);transition:var(--trans)}
+#input-codigo:focus{border-color:var(--pri);box-shadow:0 0 0 3px rgba(13,148,136,.12)}
+#input-codigo:disabled{background:var(--surf2);color:var(--txt3);cursor:not-allowed}
+#input-codigo::placeholder{color:var(--txt3);font-size:15px;font-weight:400}
+
+/* Main content */
+.pdv-body{display:grid;grid-template-columns:1fr 300px;flex:1;overflow:hidden;min-height:0}
+
+/* Items table */
+.pdv-items{display:flex;flex-direction:column;overflow:hidden;padding:0}
+.items-table-wrap{flex:1;overflow-y:auto}
+table.items{width:100%;border-collapse:collapse}
+table.items thead th{position:sticky;top:0;background:var(--surf2);padding:10px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--txt3);text-align:left;border-bottom:1.5px solid var(--border)}
+table.items tbody td{padding:10px 14px;border-bottom:1px solid var(--border);font-size:13px;color:var(--txt)}
+table.items tbody tr.selected{background:var(--pri-lt)}
+table.items tbody tr.selected td{color:var(--pri-txt);font-weight:500}
+table.items tbody tr:hover:not(.selected){background:var(--surf2)}
+.item-name{font-weight:500;max-width:220px}
+.item-qty{font-family:var(--fmono);font-weight:600}
+.item-price{font-family:var(--fmono)}
+.item-sub{font-family:var(--fmono);font-weight:700}
+.item-disc{font-family:var(--fmono);color:var(--red);font-size:12px}
+td.num{text-align:right}
+.empty-cart{display:flex;flex-direction:column;align-items:center;justify-content:center;height:200px;color:var(--txt3);gap:10px}
+.empty-cart svg{opacity:.3}
+.empty-cart p{font-size:13px}
+
+/* Right panel */
+.pdv-panel{background:var(--surf2);border-left:1.5px solid var(--border);display:flex;flex-direction:column;gap:0;overflow-y:auto}
+.panel-totals{padding:16px 14px;display:flex;flex-direction:column;gap:8px}
+.total-row{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:var(--r-sm);background:var(--surf);border:1px solid var(--border)}
+.total-row.big{background:var(--pri);border-color:var(--pri)}
+.total-row.big .t-label{color:rgba(255,255,255,.8)}
+.total-row.big .t-val{color:#fff}
+.t-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--txt3)}
+.t-val{font-family:var(--fmono);font-size:18px;font-weight:800;color:var(--txt)}
+.t-val.neg{color:var(--red)}
+.panel-divider{height:1px;background:var(--border);margin:0 14px}
+.panel-shortcuts{padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.key-hint{display:flex;align-items:center;gap:7px;padding:7px 9px;border-radius:var(--r-sm);background:var(--surf);border:1px solid var(--border);font-size:11px;color:var(--txt2)}
+.key-hint kbd{background:var(--border);color:var(--pri);font-family:var(--fmono);font-size:10px;font-weight:700;padding:2px 6px;border-radius:3px;min-width:28px;text-align:center}
+.panel-actions{padding:14px;display:flex;flex-direction:column;gap:7px}
+.panel-actions-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--txt3);margin-bottom:4px}
+
+/* Footer */
+.pdv-footer{background:var(--surf);border-top:1.5px solid var(--border);padding:0 18px;display:flex;align-items:center;justify-content:space-between;height:38px;font-size:11px;color:var(--txt3);flex-shrink:0}
+.footer-left,.footer-right{display:flex;align-items:center;gap:14px}
+.footer-sep{width:1px;height:14px;background:var(--border)}
+#footer-clock{font-family:var(--fmono);font-weight:600}
+
+/* ═══════════════════════════════════════════════════════════
+   PAYMENT MODAL
+════════════════════════════════════════════════════════════ */
+#modal-pagamento .modal-card{max-width:540px}
+.pgto-summary{background:var(--pri);border-radius:var(--r);padding:14px 18px;color:#fff;display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.pgto-summary .lbl{font-size:11px;opacity:.8;text-transform:uppercase;letter-spacing:.07em}
+.pgto-summary .val{font-family:var(--fmono);font-size:24px;font-weight:800}
+.pgto-types{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:14px}
+.pgto-type-btn{padding:10px 8px;border-radius:var(--r-sm);border:2px solid var(--border);background:var(--surf);color:var(--txt2);font-size:12px;font-weight:600;cursor:pointer;transition:var(--trans);text-align:center}
+.pgto-type-btn:hover{border-color:var(--pri-lt);background:var(--pri-lt)}
+.pgto-type-btn.selected{border-color:var(--pri);background:var(--pri-lt);color:var(--pri)}
+.pgto-value-row{display:flex;gap:10px;align-items:flex-end;margin-bottom:14px}
+.pgto-value-row .field{flex:1}
+#pgto-valor{font-family:var(--fmono);font-size:22px;font-weight:700}
+.pgto-list{max-height:160px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--r-sm);margin-bottom:14px}
+.pgto-list-empty{padding:16px;text-align:center;color:var(--txt3);font-size:13px}
+.pgto-item{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border)}
+.pgto-item:last-child{border-bottom:none}
+.pgto-item-type{font-weight:600;font-size:13px}
+.pgto-item-val{font-family:var(--fmono);font-weight:700;font-size:14px}
+.pgto-bottom{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pgto-info{padding:10px 14px;border-radius:var(--r-sm);background:var(--surf2);border:1px solid var(--border)}
+.pgto-info .lbl{font-size:11px;color:var(--txt3);font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+.pgto-info .val{font-family:var(--fmono);font-size:16px;font-weight:800;color:var(--txt);margin-top:2px}
+.pgto-info .val.pos{color:var(--grn)}
+.pgto-info .val.neg{color:var(--red)}
+
+/* ═══════════════════════════════════════════════════════════
+   PRODUCT SEARCH MODAL
+════════════════════════════════════════════════════════════ */
+#modal-busca .modal-card{max-width:580px}
+.search-results{max-height:320px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--r-sm);margin-top:12px}
+.search-row{display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:center;padding:11px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:var(--trans)}
+.search-row:last-child{border-bottom:none}
+.search-row:hover,.search-row.selected{background:var(--pri-lt)}
+.sr-nome{font-weight:600;font-size:13px}
+.sr-cod{font-family:var(--fmono);font-size:11px;color:var(--txt3)}
+.sr-preco{font-family:var(--fmono);font-weight:700;font-size:14px;color:var(--pri);text-align:right}
+.sr-unit{font-size:11px;color:var(--txt3);text-align:right}
+
+/* ═══════════════════════════════════════════════════════════
+   SUPERVISOR MODAL
+════════════════════════════════════════════════════════════ */
+#modal-supervisor .modal-card{max-width:420px}
+.sup-action-badge{display:inline-block;background:var(--amb-lt);color:#92400E;border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px}
+
+/* ═══════════════════════════════════════════════════════════
+   FECHAMENTO MODAL
+════════════════════════════════════════════════════════════ */
+#modal-fechamento .modal-card{max-width:460px}
+.fechamento-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:16px 0}
+.fech-item{background:var(--surf2);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px}
+.fech-item .lbl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--txt3)}
+.fech-item .val{font-family:var(--fmono);font-size:16px;font-weight:800;margin-top:3px}
+.fech-total{grid-column:1/-1;background:var(--pri-lt);border-color:var(--pri)}
+.fech-total .val{color:var(--pri)}
+
+/* ═══════════════════════════════════════════════════════════
+   ALERT / TOAST
+════════════════════════════════════════════════════════════ */
+#toast-area{position:fixed;top:18px;right:18px;z-index:999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{background:var(--surf);border-radius:var(--r);box-shadow:var(--sh-lg);padding:12px 18px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:10px;min-width:240px;max-width:340px;animation:toastIn .2s ease;border-left:4px solid var(--txt3)}
+.toast.ok{border-left-color:var(--grn);color:var(--grn)}
+.toast.err{border-left-color:var(--red);color:var(--red)}
+.toast.warn{border-left-color:var(--amb);color:var(--amb)}
+.toast.info{border-left-color:var(--blue);color:var(--blue)}
+@keyframes toastIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+</style>
+</head>
+<body>
+
+<!-- ──────────────────────────────────────────────────────────
+     TOAST AREA
+─────────────────────────────────────────────────────────── -->
+<div id="toast-area"></div>
+
+<!-- ──────────────────────────────────────────────────────────
+     SCREEN: LOGIN
+─────────────────────────────────────────────────────────── -->
+<div id="screen-login" class="screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <img src="logo.png" alt="PDVix" onerror="this.style.display='none'">
+      <p>Ponto de Venda Enterprise</p>
+    </div>
+    <div class="login-form">
+      <div class="field">
+        <label>Login (CPF)</label>
+        <input class="inp inp-lg" id="login-login" placeholder="CPF ou usuário" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>Senha</label>
+        <input class="inp inp-lg" id="login-senha" type="password" placeholder="••••••••">
+      </div>
+      <div class="login-err" id="login-err"></div>
+      <button class="btn btn-pri btn-lg btn-full" id="btn-login">Entrar</button>
+    </div>
+    <div class="login-online">
+      <span class="dot" id="login-dot"></span>
+      <span id="login-online-txt">Verificando conexão…</span>
+    </div>
+  </div>
+</div>
+
+<!-- ──────────────────────────────────────────────────────────
+     SCREEN: PDV
+─────────────────────────────────────────────────────────── -->
+<div id="screen-pdv" class="screen">
+  <!-- Header -->
+  <header class="pdv-header">
+    <div class="pdv-logo"><img src="logo.png" alt="PDV" onerror="this.style.display='none'"></div>
+    <div class="header-client">
+      <div class="header-label">Cliente</div>
+      <div class="header-val" id="hdr-cliente">CONSUMIDOR FINAL</div>
+    </div>
+    <div class="header-last">
+      <div class="header-label">Último item</div>
+      <div class="header-val" id="hdr-lastitem">—</div>
+    </div>
+    <div id="hdr-status" class="status-chip livre">CAIXA LIVRE</div>
+    <div class="header-user">
+      <div class="header-val" id="hdr-usuario">—</div>
+      <div class="online-badge"><span class="dot" id="hdr-dot"></span><span id="hdr-online-txt">—</span></div>
+    </div>
+  </header>
+
+  <!-- Input bar -->
+  <div class="pdv-input-bar">
+    <div class="qty-wrap">
+      <label>QTD</label>
+      <input id="input-qtd" type="text" inputmode="decimal" placeholder="1" autocomplete="off">
+    </div>
+    <div class="barcode-wrap">
+      <label>Código de barras / Código alternativo</label>
+      <input id="input-codigo" type="text" placeholder="Aguardando… (F3 para abrir venda)" disabled autocomplete="off">
+    </div>
+    <button class="btn-icon" id="btn-busca-prod" title="Buscar produto (F8)">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    </button>
+  </div>
+
+  <!-- Body -->
+  <div class="pdv-body">
+    <!-- Items table -->
+    <div class="pdv-items">
+      <div class="items-table-wrap" id="items-table-wrap">
+        <table class="items">
+          <thead>
+            <tr>
+              <th style="width:36px">#</th>
+              <th>Produto</th>
+              <th style="width:90px" class="num">Qtd</th>
+              <th style="width:110px" class="num">Unit.</th>
+              <th style="width:90px" class="num">Desc.</th>
+              <th style="width:120px" class="num">Subtotal</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-itens"></tbody>
+        </table>
+        <div class="empty-cart" id="empty-cart">
+          <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+          <p>Nenhum item — pressione F3 para abrir uma venda</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right panel -->
+    <aside class="pdv-panel">
+      <div class="panel-totals">
+        <div class="total-row">
+          <span class="t-label">Subtotal</span>
+          <span class="t-val" id="val-subtotal">R$ 0,00</span>
+        </div>
+        <div class="total-row">
+          <span class="t-label">Desconto</span>
+          <span class="t-val neg" id="val-desconto">− R$ 0,00</span>
+        </div>
+        <div class="total-row big">
+          <span class="t-label">Total</span>
+          <span class="t-val" id="val-total">R$ 0,00</span>
+        </div>
+      </div>
+      <div class="panel-divider"></div>
+      <div class="panel-shortcuts">
+        <div class="key-hint"><kbd>F3</kbd> Abrir venda</div>
+        <div class="key-hint"><kbd>F2</kbd> Finalizar</div>
+        <div class="key-hint"><kbd>F4</kbd> CPF cliente</div>
+        <div class="key-hint"><kbd>F8</kbd> Buscar</div>
+        <div class="key-hint"><kbd>F6</kbd> Desc. venda</div>
+        <div class="key-hint"><kbd>F7</kbd> Desc. item</div>
+        <div class="key-hint"><kbd>Del</kbd> Rem. item</div>
+        <div class="key-hint"><kbd>F10</kbd> Cancelar</div>
+      </div>
+      <div class="panel-divider"></div>
+      <div class="panel-actions">
+        <div class="panel-actions-title">Caixa</div>
+        <button class="btn btn-ghost btn-full" id="btn-sangria">💵 Sangria</button>
+        <button class="btn btn-ghost btn-full" id="btn-fechamento">🔒 Fechar Caixa</button>
+        <button class="btn btn-ghost btn-full" id="btn-pdv-logout">↩ Sair</button>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Footer -->
+  <footer class="pdv-footer">
+    <div class="footer-left">
+      <span>PDVix v<span id="ftr-versao">2.0.0</span></span>
+      <span class="footer-sep"></span>
+      <span>PDV <span id="ftr-pdv">01</span></span>
+      <span class="footer-sep"></span>
+      <span id="footer-clock">00:00:00</span>
+    </div>
+    <div class="footer-right">
+      <span id="ftr-vendaid" style="font-family:var(--fmono);color:var(--txt3)"></span>
+    </div>
+  </footer>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     MODAL: ABERTURA DE CAIXA
+═══════════════════════════════════════════════════════════ -->
+<div class="overlay" id="modal-abertura">
+  <div class="modal-card" style="max-width:380px">
+    <div class="modal-header">
+      <div><div class="modal-title">Abrir Caixa</div><div class="modal-subtitle">Informe o valor em caixa no início do turno</div></div>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label>Valor de Abertura (R$)</label>
+        <input class="inp inp-lg" id="abertura-valor" type="text" inputmode="decimal" placeholder="0,00">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-pri btn-lg" id="btn-confirmar-abertura">Abrir Caixa</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     MODAL: SUPERVISOR
+═══════════════════════════════════════════════════════════ -->
+<div class="overlay" id="modal-supervisor">
+  <div class="modal-card" style="max-width:420px">
+    <div class="modal-header">
+      <div><div class="modal-title">🔐 Autorização de Supervisor</div><div class="modal-subtitle" id="sup-acao-txt">Ação requer autorização</div></div>
+    </div>
+    <div class="modal-body">
+      <div class="sup-action-badge" id="sup-badge">—</div>
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="sup-cartao">Cartão / Código</button>
+        <button class="tab-btn" data-tab="sup-login">Login e Senha</button>
+      </div>
+      <div class="tab-panel active" id="sup-cartao">
+        <div class="field">
+          <label>Bipe o cartão ou digite o código</label>
+          <input class="inp inp-code inp-lg" id="sup-codigo" placeholder="••••••••" autocomplete="off">
+        </div>
+      </div>
+      <div class="tab-panel" id="sup-login">
+        <div class="field"><label>Login do Supervisor</label><input class="inp" id="sup-login-user" autocomplete="off"></div>
+        <div class="field" style="margin-top:10px"><label>Senha</label><input class="inp" id="sup-login-pass" type="password"></div>
+      </div>
+      <div class="login-err" id="sup-err" style="margin-top:10px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="btn-sup-cancel">Cancelar</button>
+      <button class="btn btn-amber" id="btn-sup-confirm">Autorizar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     MODAL: PAGAMENTO
+═══════════════════════════════════════════════════════════ -->
+<div class="overlay" id="modal-pagamento">
+  <div class="modal-card" style="max-width:540px">
+    <div class="modal-header">
+      <div><div class="modal-title">💳 Pagamento</div><div class="modal-subtitle">Venda <span id="pgto-num-venda"></span></div></div>
+    </div>
+    <div class="modal-body">
+      <div class="pgto-summary">
+        <div><div class="lbl">Total a Pagar</div><div class="val" id="pgto-total-display">R$ 0,00</div></div>
+        <div style="text-align:right"><div class="lbl">Nº Venda</div><div class="val" style="font-size:14px" id="pgto-num-display">—</div></div>
+      </div>
+      <div class="pgto-types">
+        <button class="pgto-type-btn selected" data-tipo="dinheiro">💵 Dinheiro</button>
+        <button class="pgto-type-btn" data-tipo="pix">📱 PIX</button>
+        <button class="pgto-type-btn" data-tipo="pos_debito">💳 Débito</button>
+        <button class="pgto-type-btn" data-tipo="pos_credito">💳 Crédito</button>
+        <button class="pgto-type-btn" data-tipo="pos_pix">📲 POS PIX</button>
+        <button class="pgto-type-btn" data-tipo="outros">⚙️ Outros</button>
+      </div>
+      <div class="pgto-value-row">
+        <div class="field">
+          <label>Valor (R$)</label>
+          <input class="inp inp-code" id="pgto-valor" type="text" inputmode="decimal" placeholder="0,00">
+        </div>
+        <button class="btn btn-pri" id="btn-add-pgto">+ Adicionar</button>
+      </div>
+      <div class="pgto-list" id="pgto-list"><div class="pgto-list-empty">Nenhum pagamento adicionado</div></div>
+      <div class="pgto-bottom">
+        <div class="pgto-info"><div class="lbl">Total Pago</div><div class="val pos" id="pgto-pago">R$ 0,00</div></div>
+        <div class="pgto-info"><div class="lbl">Troco / Restante</div><div class="val" id="pgto-troco">R$ 0,00</div></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="btn-pgto-cancel">Cancelar Venda</button>
+      <button class="btn btn-success btn-lg" id="btn-pgto-finalizar" disabled>✓ Confirmar Venda</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     MODAL: CPF
+═══════════════════════════════════════════════════════════ -->
+<div class="overlay" id="modal-cpf">
+  <div class="modal-card" style="max-width:380px">
+    <div class="modal-header">
+      <div class="modal-title">👤 CPF na Nota</div>
+      <button class="modal-close" data-close="modal-cpf">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label>CPF do Cliente</label>
+        <input class="inp inp-lg inp-code" id="cpf-input" placeholder="000.000.000-00" maxlength="14" autocomplete="off">
+      </div>
+      <div class="field" style="margin-top:10px">
+        <label>Nome (opcional)</label>
+        <input class="inp" id="cpf-nome" placeholder="Nome do cliente">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" data-close="modal-cpf">Cancelar</button>
+      <button class="btn btn-pri" id="btn-cpf-ok">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     MODAL: BUSCA PRODUTO (F8)
+═══════════════════════════════════════════════════════════ -->
+<div class="overlay" id="modal-busca">
+  <div class="modal-card" style="max-width:580px">
+    <div class="modal-header">
+      <div class="modal-title">🔍 Buscar Produto</div>
+      <button class="modal-close" data-close="modal-busca">✕</button>
+    </div>
+    <div class="modal-body">
+      <input class="inp inp-lg" id="busca-input" placeholder="Nome, código alternativo ou código de barras…" autocomplete="off">
+      <div class="search-results" id="busca-results"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" data-close="modal-busca">Fechar</button>
+      <button class="btn btn-pri" id="btn-busca-add" disabled>Adicionar ao Carrinho</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     MODAL: PESO (produtos G/KG)
+═══════════════════════════════════════════════════════════ -->
+<div class="overlay" id="modal-peso">
+  <div class="modal-card" style="max-width:360px">
+    <div class="modal-header">
+      <div><div class="modal-title">⚖️ Peso do Produto</div><div class="modal-subtitle" id="peso-produto-nome">—</div></div>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label id="peso-label">Peso (kg)</label>
+        <input class="inp inp-lg inp-code" id="peso-input" type="text" inputmode="decimal" placeholder="0.000" autocomplete="off">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="btn-peso-cancel">Cancelar</button>
+      <button class="btn btn-pri" id="btn-peso-ok">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     MODAL: DESCONTO
+═══════════════════════════════════════════════════════════ -->
+<div class="overlay" id="modal-desconto">
+  <div class="modal-card" style="max-width:340px">
+    <div class="modal-header">
+      <div class="modal-title" id="desc-modal-title">Desconto</div>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label>Valor do Desconto (R$)</label>
+        <input class="inp inp-lg inp-code" id="desc-input" type="text" inputmode="decimal" placeholder="0,00">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="btn-desc-cancel">Cancelar</button>
+      <button class="btn btn-pri" id="btn-desc-ok">Aplicar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     MODAL: SANGRIA
+═══════════════════════════════════════════════════════════ -->
+<div class="overlay" id="modal-sangria">
+  <div class="modal-card" style="max-width:380px">
+    <div class="modal-header">
+      <div class="modal-title">💵 Sangria de Caixa</div>
+      <button class="modal-close" data-close="modal-sangria">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field"><label>Valor Retirado (R$)</label><input class="inp inp-lg inp-code" id="sangria-valor" type="text" inputmode="decimal" placeholder="0,00"></div>
+      <div class="field" style="margin-top:12px"><label>Motivo</label><input class="inp" id="sangria-motivo" placeholder="Depósito, troco, etc."></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" data-close="modal-sangria">Cancelar</button>
+      <button class="btn btn-amber" id="btn-sangria-ok">Registrar Sangria</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     MODAL: FECHAMENTO
+═══════════════════════════════════════════════════════════ -->
+<div class="overlay" id="modal-fechamento">
+  <div class="modal-card" style="max-width:460px">
+    <div class="modal-header">
+      <div><div class="modal-title">🔒 Fechamento de Caixa</div><div class="modal-subtitle">Resumo do turno</div></div>
+    </div>
+    <div class="modal-body">
+      <div class="fechamento-grid" id="fechamento-grid"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" data-close="modal-fechamento">Cancelar</button>
+      <button class="btn btn-danger" id="btn-fechar-caixa">Confirmar Fechamento</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     JS
+═══════════════════════════════════════════════════════════ -->
+<script>
+/* ─── Formatting helpers ──────────────────────────────────── */
+const BRL = (v) => new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL' }).format(v || 0);
+const fQtd = (q, ub) => {
+  if (ub === 'G') return q >= 1000 ? (q/1000).toFixed(3).replace(/\.?0+$/,'') + ' kg' : q + ' g';
+  return String(q) + ' UN';
+};
+const parseMoney = (s) => parseFloat(String(s).replace(',','.')) || 0;
+const cpfMask = (s) => {
+  s = s.replace(/\D/g,'').slice(0,11);
+  if (s.length <= 3) return s;
+  if (s.length <= 6) return s.slice(0,3)+'.'+s.slice(3);
+  if (s.length <= 9) return s.slice(0,3)+'.'+s.slice(3,6)+'.'+s.slice(6);
+  return s.slice(0,3)+'.'+s.slice(3,6)+'.'+s.slice(6,9)+'-'+s.slice(9);
+};
+
+/* ─── Toast ───────────────────────────────────────────────── */
+const toastArea = document.getElementById('toast-area');
+function toast(msg, type='info', ms=2800) {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  toastArea.appendChild(el);
+  setTimeout(() => el.remove(), ms);
+}
+
+/* ─── Modal helpers ───────────────────────────────────────── */
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => closeModal(b.dataset.close)));
+
+/* ─── Tabs ────────────────────────────────────────────────── */
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const parent = btn.closest('.modal-body, .modal-card');
+    parent.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    parent.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    parent.querySelector('#' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+/* ─── Screen routing ─────────────────────────────────────── */
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+/* ══════════════════════════════════════════════════════════
+   APPLICATION STATE
+═══════════════════════════════════════════════════════════ */
+const S = {
+  usuario:      null,
+  caixaId:      null,
+  sysInfo:      { online: false, versao: '2.0.0', numero_pdv: '01' },
+  // PDV
+  vendaId:      null,
+  numeroVenda:  null,
+  vendaAberta:  false,
+  itens:        [],
+  desconto:     0,
+  acrescimo:    0,
+  clienteId:    null,
+  clienteCpf:   '',
+  clienteNome:  'CONSUMIDOR FINAL',
+  selectedIdx:  -1,
+  // Payment
+  pgtoFeitos:       [],
+  primeiroPagemento:false,
+  // Supervisor callback
+  supCallback:  null,
+  supAcao:      null,
+  // Busca
+  buscaResultados: [],
+  buscaSelected:   -1,
+  // Peso
+  pesoCallback: null,
+  pesoProduto:  null,
+};
+
+/* ══════════════════════════════════════════════════════════
+   DOM REFS
+═══════════════════════════════════════════════════════════ */
+const D = {
+  inputCodigo:  document.getElementById('input-codigo'),
+  inputQtd:     document.getElementById('input-qtd'),
+  tbodyItens:   document.getElementById('tbody-itens'),
+  emptyCart:    document.getElementById('empty-cart'),
+  valSubtotal:  document.getElementById('val-subtotal'),
+  valDesconto:  document.getElementById('val-desconto'),
+  valTotal:     document.getElementById('val-total'),
+  hdrCliente:   document.getElementById('hdr-cliente'),
+  hdrLastItem:  document.getElementById('hdr-lastitem'),
+  hdrStatus:    document.getElementById('hdr-status'),
+  hdrUsuario:   document.getElementById('hdr-usuario'),
+  hdrDot:       document.getElementById('hdr-dot'),
+  hdrOnlineTxt: document.getElementById('hdr-online-txt'),
+  ftrVendaId:   document.getElementById('ftr-vendaid'),
+};
+
+/* ══════════════════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════════════════ */
+async function init() {
+  S.sysInfo = await window.pdv.sistemaStatus();
+  updateOnlineIndicator();
+  setInterval(async () => { S.sysInfo = await window.pdv.sistemaStatus(); updateOnlineIndicator(); }, 15000);
+  startClock();
+
+  const usr = await window.pdv.usuarioAtual();
+  if (usr) {
+    S.usuario = usr;
+    await checkCaixa();
+  } else {
+    showScreen('screen-login');
+    document.getElementById('login-login').focus();
+  }
+
+  // Update login online dot
+  const dot = document.getElementById('login-dot');
+  const txt = document.getElementById('login-online-txt');
+  dot.className = 'dot ' + (S.sysInfo.online ? 'online' : 'offline');
+  txt.textContent = S.sysInfo.online ? 'Conectado ao servidor' : 'Modo offline';
+  document.getElementById('ftr-versao').textContent = S.sysInfo.versao;
+  document.getElementById('ftr-pdv').textContent    = S.sysInfo.numero_pdv;
+}
+
+function updateOnlineIndicator() {
+  const online = S.sysInfo.online;
+  D.hdrDot.className      = 'dot ' + (online ? 'online' : 'offline');
+  D.hdrOnlineTxt.textContent = online ? 'Online' : 'Offline';
+}
+
+function startClock() {
+  const el = document.getElementById('footer-clock');
+  const tick = () => { el.textContent = new Date().toLocaleTimeString('pt-BR'); };
+  tick(); setInterval(tick, 1000);
+}
+
+async function checkCaixa() {
+  const cs = await window.pdv.caixaStatus();
+  if (cs) {
+    S.caixaId = cs.id;
+    showPDV();
+  } else {
+    showScreen('screen-pdv');
+    document.getElementById('screen-pdv').classList.add('active');
+    // hide screen-login if needed
+    document.getElementById('screen-login').classList.remove('active');
+    openModal('modal-abertura');
+    setTimeout(() => document.getElementById('abertura-valor').focus(), 100);
+  }
+}
+
+function showPDV() {
+  showScreen('screen-pdv');
+  D.hdrUsuario.textContent = S.usuario.nome;
+  renderItens();
+  updateTotals();
+  focusCodigo();
+}
+
+/* ══════════════════════════════════════════════════════════
+   LOGIN
+═══════════════════════════════════════════════════════════ */
+document.getElementById('btn-login').addEventListener('click', doLogin);
+document.getElementById('login-senha').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+document.getElementById('login-login').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('login-senha').focus(); });
+
+async function doLogin() {
+  const login = document.getElementById('login-login').value.trim();
+  const senha = document.getElementById('login-senha').value;
+  const errEl = document.getElementById('login-err');
+  errEl.style.display = 'none';
+
+  if (!login || !senha) { showLoginErr('Preencha login e senha.'); return; }
+
+  const btn = document.getElementById('btn-login');
+  btn.disabled = true; btn.textContent = 'Aguarde…';
+
+  const r = await window.pdv.login({ login, senha });
+  btn.disabled = false; btn.textContent = 'Entrar';
+
+  if (r.sucesso) {
+    S.usuario = r.usuario;
+    document.getElementById('login-senha').value = '';
+    await checkCaixa();
+  } else {
+    showLoginErr(r.mensagem);
+  }
+}
+
+function showLoginErr(msg) {
+  const el = document.getElementById('login-err');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+/* ══════════════════════════════════════════════════════════
+   ABERTURA DE CAIXA
+═══════════════════════════════════════════════════════════ */
+document.getElementById('btn-confirmar-abertura').addEventListener('click', async () => {
+  const v = parseMoney(document.getElementById('abertura-valor').value);
+  const r = await window.pdv.caixaAbrir({ valor_abertura: v });
+  if (r.sucesso) {
+    S.caixaId = r.id;
+    closeModal('modal-abertura');
+    showPDV();
+    toast('Caixa aberto com sucesso!', 'ok');
+  } else {
+    toast(r.mensagem, 'err');
+  }
+});
+document.getElementById('abertura-valor').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('btn-confirmar-abertura').click();
+});
+
+/* ══════════════════════════════════════════════════════════
+   PDV — ESTADO
+═══════════════════════════════════════════════════════════ */
+function abrirVenda() {
+  if (S.vendaAberta) return;
+  // Will create venda on server/local when finalizing, not now
+  S.vendaAberta   = true;
+  S.itens         = [];
+  S.desconto      = 0;
+  S.acrescimo     = 0;
+  S.clienteId     = null;
+  S.clienteCpf    = '';
+  S.clienteNome   = 'CONSUMIDOR FINAL';
+  S.selectedIdx   = -1;
+  S.pgtoFeitos    = [];
+  S.primeiroPagemento = false;
+  S.vendaId       = null;
+  S.numeroVenda   = null;
+
+  D.inputCodigo.disabled = false;
+  D.inputCodigo.placeholder = 'Bipe ou digite o código…';
+  D.hdrStatus.textContent   = 'VENDA EM ANDAMENTO';
+  D.hdrStatus.className     = 'status-chip aberta';
+  D.hdrCliente.textContent  = 'CONSUMIDOR FINAL';
+  D.ftrVendaId.textContent  = '';
+
+  renderItens();
+  updateTotals();
+  clearInputs();
+  focusCodigo();
+}
+
+async function finalizarVenda() {
+  if (!S.vendaAberta || S.itens.length === 0) {
+    toast('Adicione itens à venda antes de finalizar.', 'warn');
+    return;
+  }
+  // Open payment modal
+  abrirModalPagamento();
+}
+
+async function cancelarVenda() {
+  if (!S.vendaAberta) return;
+  if (S.primeiroPagemento) {
+    toast('Há pagamentos registrados. Venda não pode ser cancelada.', 'err');
+    return;
+  }
+  pedirSupervisor('cancelar_venda', 'Cancelar Venda', async (ok) => {
+    if (!ok) return;
+    if (S.vendaId) {
+      const r = await window.pdv.vendaCancelar({ venda_id: S.vendaId });
+      if (!r.sucesso) { toast(r.mensagem, 'err'); return; }
+    }
+    resetVenda();
+    toast('Venda cancelada.', 'warn');
+  });
+}
+
+function resetVenda() {
+  S.vendaAberta = false;
+  S.itens = []; S.desconto = 0; S.acrescimo = 0;
+  S.clienteNome = 'CONSUMIDOR FINAL'; S.clienteCpf = ''; S.clienteId = null;
+  S.selectedIdx = -1; S.vendaId = null; S.pgtoFeitos = [];
+  S.primeiroPagemento = false;
+
+  D.inputCodigo.disabled  = true;
+  D.inputCodigo.placeholder = 'Aguardando… (F3 para abrir venda)';
+  D.inputCodigo.value     = '';
+  D.inputQtd.value        = '';
+  D.hdrStatus.textContent = 'CAIXA LIVRE';
+  D.hdrStatus.className   = 'status-chip livre';
+  D.hdrCliente.textContent = 'CONSUMIDOR FINAL';
+  D.hdrLastItem.textContent = '—';
+  D.ftrVendaId.textContent = '';
+
+  renderItens();
+  updateTotals();
+}
+
+/* ══════════════════════════════════════════════════════════
+   PDV — ADICIONAR PRODUTO
+═══════════════════════════════════════════════════════════ */
+async function adicionarPorCodigo(codigo) {
+  if (!S.vendaAberta) { toast('Pressione F3 para abrir uma venda.', 'warn'); return; }
+
+  const r = await window.pdv.buscarCodigo({ termo: codigo });
+  if (!r.encontrado) { toast('Produto não encontrado: ' + codigo, 'err'); return; }
+
+  const p = r.produto;
+  if (p.bloqueado) { toast('Produto bloqueado.', 'err'); return; }
+
+  const qtdStr = D.inputQtd.value.trim();
+
+  // Weight product
+  if (p.unidade_base === 'G') {
+    const tipoEmb = p.tipo_embalagem;
+    if (qtdStr) {
+      const qtdNum = parseMoney(qtdStr);
+      const gramas = tipoEmb === 'KG' ? Math.round(qtdNum * 1000) : Math.round(qtdNum);
+      adicionarItemPeso(p, gramas, tipoEmb, codigo);
+    } else {
+      // Ask weight
+      S.pesoCallback = (gramas) => adicionarItemPeso(p, gramas, tipoEmb, codigo);
+      S.pesoProduto  = p;
+      abrirModalPeso(p, tipoEmb);
+      return;
+    }
+  } else {
+    // UN / CX
+    const qtdNum  = parseMoney(qtdStr) || 1;
+    const tipoEmb = p.tipo_embalagem;
+    const qtdFinal = tipoEmb === 'CX' ? Math.round(qtdNum * p.fator_embalagem) : Math.round(qtdNum);
+    adicionarItemUN(p, qtdFinal, tipoEmb, codigo);
+  }
+
+  clearInputs();
+  focusCodigo();
+}
+
+function adicionarItemUN(p, quantidade, tipoEmb, codigo) {
+  const preco = parseFloat(p.preco_embalagem || p.preco_venda);
+  _addToCart({
+    produto_id:          p.id,
+    produto_nome:        p.nome,
+    quantidade:          quantidade,
+    valor_unitario:      preco,
+    desconto_item:       0,
+    codigo_barras_usado: codigo,
+    unidade_origem:      tipoEmb,
+    unidade_base:        p.unidade_base,
+    fator_embalagem:     p.fator_embalagem,
+  });
+}
+
+function adicionarItemPeso(p, gramas, tipoEmb, codigo) {
+  const precoPorGrama = parseFloat(p.preco_embalagem || p.preco_venda) / (tipoEmb === 'KG' ? 1000 : 1);
+  _addToCart({
+    produto_id:          p.id,
+    produto_nome:        p.nome,
+    quantidade:          gramas,
+    valor_unitario:      precoPorGrama,
+    desconto_item:       0,
+    codigo_barras_usado: codigo,
+    unidade_origem:      tipoEmb,
+    unidade_base:        'G',
+    fator_embalagem:     p.fator_embalagem,
+  });
+}
+
+function _addToCart(item) {
+  // Check if same product+type already in cart → increment
+  const existing = S.itens.findIndex(i => i.produto_id === item.produto_id && i.unidade_origem === item.unidade_origem);
+  if (existing >= 0) {
+    S.itens[existing].quantidade += item.quantidade;
+  } else {
+    S.itens.push(item);
+    S.selectedIdx = S.itens.length - 1;
+  }
+  D.hdrLastItem.textContent = item.produto_nome + ' · ' + fQtd(item.quantidade, item.unidade_base);
+  renderItens();
+  updateTotals();
+}
+
+/* ══════════════════════════════════════════════════════════
+   PDV — RENDER
+═══════════════════════════════════════════════════════════ */
+function renderItens() {
+  const tbody = D.tbodyItens;
+  tbody.innerHTML = '';
+
+  if (!S.itens.length) {
+    D.emptyCart.classList.remove('hidden');
+    return;
+  }
+  D.emptyCart.classList.add('hidden');
+
+  S.itens.forEach((item, idx) => {
+    const sub = (item.valor_unitario * item.quantidade) - (item.desconto_item || 0);
+    const tr  = document.createElement('tr');
+    if (idx === S.selectedIdx) tr.className = 'selected';
+    tr.dataset.idx = idx;
+
+    const qDisplay = fQtd(item.quantidade, item.unidade_base);
+    const vUnit    = item.unidade_base === 'G'
+      ? BRL(item.valor_unitario * 1000) + '/kg'
+      : BRL(item.valor_unitario);
+
+    tr.innerHTML = `
+      <td>${idx + 1}</td>
+      <td class="item-name">${item.produto_nome}</td>
+      <td class="item-qty num">${qDisplay}</td>
+      <td class="item-price num">${vUnit}</td>
+      <td class="item-disc num">${item.desconto_item > 0 ? '− ' + BRL(item.desconto_item) : '—'}</td>
+      <td class="item-sub num">${BRL(sub)}</td>
+    `;
+    tr.addEventListener('click', () => {
+      S.selectedIdx = idx;
+      renderItens();
+    });
+    tbody.appendChild(tr);
+
+    if (idx === S.selectedIdx) tr.scrollIntoView({ block: 'nearest' });
+  });
+}
+
+function calcTotals() {
+  const sub  = S.itens.reduce((s, i) => s + (i.valor_unitario * i.quantidade) - (i.desconto_item || 0), 0);
+  const total = Math.max(0, sub - S.desconto + S.acrescimo);
+  return { sub, total };
+}
+
+function updateTotals() {
+  const { sub, total } = calcTotals();
+  D.valSubtotal.textContent = BRL(sub);
+  D.valDesconto.textContent = '− ' + BRL(S.desconto);
+  D.valTotal.textContent    = BRL(total);
+}
+
+/* ══════════════════════════════════════════════════════════
+   SUPERVISOR
+═══════════════════════════════════════════════════════════ */
+const ACAO_LABELS = {
+  cancelar_item:  'Cancelar Item',
+  cancelar_venda: 'Cancelar Venda',
+  desconto_item:  'Desconto no Item',
+  desconto_venda: 'Desconto na Venda',
+};
+
+function pedirSupervisor(acao, label, callback) {
+  S.supCallback = callback;
+  S.supAcao     = acao;
+
+  document.getElementById('sup-acao-txt').textContent = 'Ação: ' + label;
+  document.getElementById('sup-badge').textContent   = ACAO_LABELS[acao] || label;
+  document.getElementById('sup-codigo').value        = '';
+  document.getElementById('sup-login-user').value    = '';
+  document.getElementById('sup-login-pass').value    = '';
+  document.getElementById('sup-err').style.display   = 'none';
+
+  // Reset tabs
+  document.querySelectorAll('#modal-supervisor .tab-btn').forEach((b,i) => b.classList.toggle('active', i===0));
+  document.getElementById('sup-cartao').classList.add('active');
+  document.getElementById('sup-login').classList.remove('active');
+
+  openModal('modal-supervisor');
+  setTimeout(() => document.getElementById('sup-codigo').focus(), 120);
+}
+
+async function confirmarSupervisor() {
+  const activeTab = document.querySelector('#modal-supervisor .tab-btn.active').dataset.tab;
+  let result;
+
+  if (activeTab === 'sup-cartao') {
+    const cod = document.getElementById('sup-codigo').value.trim();
+    if (!cod) return;
+    result = await window.pdv.supervisorCartao({ codigo: cod, acao: S.supAcao });
+  } else {
+    const login = document.getElementById('sup-login-user').value.trim();
+    const senha = document.getElementById('sup-login-pass').value;
+    if (!login || !senha) return;
+    result = await window.pdv.supervisorLogin({ login, senha, acao: S.supAcao });
+  }
+
+  const errEl = document.getElementById('sup-err');
+  if (result.valido) {
+    closeModal('modal-supervisor');
+    toast('Autorizado por ' + result.nome, 'ok');
+    if (S.supCallback) S.supCallback(true, result.nome);
+    S.supCallback = null;
+  } else {
+    errEl.textContent = result.mensagem;
+    errEl.style.display = 'block';
+  }
+}
+
+document.getElementById('btn-sup-confirm').addEventListener('click', confirmarSupervisor);
+document.getElementById('btn-sup-cancel').addEventListener('click', () => {
+  closeModal('modal-supervisor');
+  if (S.supCallback) S.supCallback(false);
+  S.supCallback = null;
+});
+document.getElementById('sup-codigo').addEventListener('keydown', e => { if (e.key === 'Enter') confirmarSupervisor(); });
+
+/* ══════════════════════════════════════════════════════════
+   DESCONTO
+═══════════════════════════════════════════════════════════ */
+let _descCallback = null;
+function abrirModalDesconto(titulo, atual, callback) {
+  _descCallback = callback;
+  document.getElementById('desc-modal-title').textContent = titulo;
+  document.getElementById('desc-input').value = atual > 0 ? String(atual).replace('.',',') : '';
+  openModal('modal-desconto');
+  setTimeout(() => document.getElementById('desc-input').focus(), 100);
+}
+
+document.getElementById('btn-desc-ok').addEventListener('click', () => {
+  const v = parseMoney(document.getElementById('desc-input').value);
+  closeModal('modal-desconto');
+  if (_descCallback) { _descCallback(v); _descCallback = null; }
+  focusCodigo();
+});
+document.getElementById('btn-desc-cancel').addEventListener('click', () => {
+  closeModal('modal-desconto');
+  _descCallback = null;
+  focusCodigo();
+});
+document.getElementById('desc-input').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('btn-desc-ok').click(); });
+
+/* ══════════════════════════════════════════════════════════
+   CPF
+═══════════════════════════════════════════════════════════ */
+document.getElementById('cpf-input').addEventListener('input', e => {
+  e.target.value = cpfMask(e.target.value);
+});
+
+document.getElementById('btn-cpf-ok').addEventListener('click', async () => {
+  const cpf  = document.getElementById('cpf-input').value.replace(/\D/g,'');
+  const nome = document.getElementById('cpf-nome').value.trim();
+
+  let clienteNome = nome || 'CPF: ' + cpfMask(cpf);
+  let clienteId   = null;
+
+  if (cpf.length === 11) {
+    const cli = await window.pdv.clienteBuscarCpf({ cpf });
+    if (cli) { clienteNome = cli.nome; clienteId = cli.id; }
+  }
+
+  S.clienteCpf  = cpf;
+  S.clienteNome = clienteNome;
+  S.clienteId   = clienteId;
+  D.hdrCliente.textContent = clienteNome;
+
+  closeModal('modal-cpf');
+  focusCodigo();
+});
+document.getElementById('cpf-input').addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('btn-cpf-ok').click(); });
+
+/* ══════════════════════════════════════════════════════════
+   BUSCA (F8)
+═══════════════════════════════════════════════════════════ */
+document.getElementById('btn-busca-prod').addEventListener('click', () => abrirBusca());
+
+function abrirBusca() {
+  S.buscaResultados = [];
+  S.buscaSelected   = -1;
+  document.getElementById('busca-input').value = '';
+  document.getElementById('busca-results').innerHTML = '';
+  document.getElementById('btn-busca-add').disabled = true;
+  openModal('modal-busca');
+  setTimeout(() => document.getElementById('busca-input').focus(), 100);
+}
+
+let _buscaTimeout;
+document.getElementById('busca-input').addEventListener('input', async (e) => {
+  clearTimeout(_buscaTimeout);
+  const q = e.target.value.trim();
+  if (q.length < 2) { document.getElementById('busca-results').innerHTML = ''; return; }
+  _buscaTimeout = setTimeout(async () => {
+    const rows = await window.pdv.pesquisarProduto({ busca: q });
+    S.buscaResultados = rows;
+    S.buscaSelected   = rows.length ? 0 : -1;
+    renderBuscaResults(rows);
+  }, 250);
+});
+
+function renderBuscaResults(rows) {
+  const el = document.getElementById('busca-results');
+  if (!rows.length) { el.innerHTML = '<div style="padding:16px;color:var(--txt3);text-align:center;font-size:13px">Nenhum produto encontrado</div>'; return; }
+  el.innerHTML = rows.map((r, i) => `
+    <div class="search-row ${i === S.buscaSelected ? 'selected' : ''}" data-idx="${i}">
+      <div>
+        <div class="sr-nome">${r.nome}</div>
+        <div class="sr-cod">Cód. ${r.codigo_interno_alternativo || '—'} · ${r.unidade_base}</div>
+      </div>
+      <div class="sr-unit">${r.codigos || ''}</div>
+      <div>
+        <div class="sr-preco">${BRL(r.preco_venda)}</div>
+        <div class="sr-unit">${r.unidade_base === 'G' ? '/kg' : '/un'}</div>
+      </div>
+    </div>
+  `).join('');
+  el.querySelectorAll('.search-row').forEach(row => {
+    row.addEventListener('click', () => {
+      S.buscaSelected = parseInt(row.dataset.idx);
+      el.querySelectorAll('.search-row').forEach(r => r.classList.toggle('selected', parseInt(r.dataset.idx) === S.buscaSelected));
+      document.getElementById('btn-busca-add').disabled = false;
+    });
+    row.addEventListener('dblclick', () => { S.buscaSelected = parseInt(row.dataset.idx); adicionarDaBusca(); });
+  });
+  document.getElementById('btn-busca-add').disabled = S.buscaSelected < 0;
+}
+
+document.getElementById('busca-input').addEventListener('keydown', e => {
+  if (e.key === 'ArrowDown') { S.buscaSelected = Math.min(S.buscaSelected + 1, S.buscaResultados.length - 1); renderBuscaResults(S.buscaResultados); }
+  if (e.key === 'ArrowUp')   { S.buscaSelected = Math.max(S.buscaSelected - 1, 0); renderBuscaResults(S.buscaResultados); }
+  if (e.key === 'Enter')     { adicionarDaBusca(); }
+});
+
+async function adicionarDaBusca() {
+  if (S.buscaSelected < 0 || !S.buscaResultados[S.buscaSelected]) return;
+  if (!S.vendaAberta) { toast('Abra uma venda antes (F3).', 'warn'); return; }
+  const p = S.buscaResultados[S.buscaSelected];
+  closeModal('modal-busca');
+
+  // Simulate buscarCodigo result
+  const cod  = String(p.codigo_interno_alternativo || p.id);
+  const r    = await window.pdv.buscarCodigo({ termo: cod });
+  if (r.encontrado) {
+    D.inputQtd.value = '';
+    await adicionarPorCodigo(cod);
+  }
+  focusCodigo();
+}
+document.getElementById('btn-busca-add').addEventListener('click', adicionarDaBusca);
+
+/* ══════════════════════════════════════════════════════════
+   PESO MODAL
+═══════════════════════════════════════════════════════════ */
+function abrirModalPeso(produto, tipoEmb) {
+  document.getElementById('peso-produto-nome').textContent = produto.nome;
+  document.getElementById('peso-label').textContent = tipoEmb === 'KG' ? 'Peso em Quilogramas (kg)' : 'Peso em Gramas (g)';
+  document.getElementById('peso-input').value = '';
+  document.getElementById('peso-input').placeholder = tipoEmb === 'KG' ? '0.000' : '0';
+  openModal('modal-peso');
+  setTimeout(() => document.getElementById('peso-input').focus(), 100);
+}
+
+document.getElementById('btn-peso-ok').addEventListener('click', () => {
+  const v = parseMoney(document.getElementById('peso-input').value);
+  if (v <= 0) { toast('Informe o peso.', 'warn'); return; }
+  closeModal('modal-peso');
+  const tipoEmb = S.pesoProduto?.tipo_embalagem || 'KG';
+  const gramas  = tipoEmb === 'KG' ? Math.round(v * 1000) : Math.round(v);
+  if (S.pesoCallback) { S.pesoCallback(gramas); S.pesoCallback = null; }
+  clearInputs(); focusCodigo();
+});
+document.getElementById('btn-peso-cancel').addEventListener('click', () => {
+  closeModal('modal-peso');
+  S.pesoCallback = null;
+  clearInputs(); focusCodigo();
+});
+document.getElementById('peso-input').addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('btn-peso-ok').click(); });
+
+/* ══════════════════════════════════════════════════════════
+   PAGAMENTO
+═══════════════════════════════════════════════════════════ */
+let _pgtoTipoSelecionado = 'dinheiro';
+
+function abrirModalPagamento() {
+  const { total } = calcTotals();
+  S.pgtoFeitos = [];
+  _pgtoTipoSelecionado = 'dinheiro';
+
+  document.getElementById('pgto-total-display').textContent = BRL(total);
+  document.getElementById('pgto-num-display').textContent   = S.numeroVenda || 'Nova';
+  document.getElementById('pgto-num-venda').textContent     = S.numeroVenda || '';
+  document.getElementById('pgto-valor').value               = '';
+  document.getElementById('btn-pgto-cancel').disabled       = false;
+
+  selectPgtoType('dinheiro');
+  renderPgtoList();
+  openModal('modal-pagamento');
+  setTimeout(() => document.getElementById('pgto-valor').focus(), 100);
+}
+
+function selectPgtoType(tipo) {
+  _pgtoTipoSelecionado = tipo;
+  document.querySelectorAll('.pgto-type-btn').forEach(b => b.classList.toggle('selected', b.dataset.tipo === tipo));
+}
+document.querySelectorAll('.pgto-type-btn').forEach(b => b.addEventListener('click', () => {
+  selectPgtoType(b.dataset.tipo);
+  document.getElementById('pgto-valor').focus();
+}));
+
+document.getElementById('btn-add-pgto').addEventListener('click', adicionarPagamento);
+document.getElementById('pgto-valor').addEventListener('keydown', e => { if (e.key === 'Enter') adicionarPagamento(); });
+
+async function adicionarPagamento() {
+  const v = parseMoney(document.getElementById('pgto-valor').value);
+  if (v <= 0) { toast('Informe o valor.', 'warn'); return; }
+
+  const { total } = calcTotals();
+
+  // Ensure venda exists locally
+  if (!S.vendaId) {
+    const r = await window.pdv.vendaCriar();
+    if (!r.sucesso) { toast('Erro ao criar venda.', 'err'); return; }
+    S.vendaId     = r.venda_id;
+    S.numeroVenda = r.numero_venda;
+    document.getElementById('pgto-num-venda').textContent   = S.numeroVenda;
+    document.getElementById('pgto-num-display').textContent = S.numeroVenda;
+    D.ftrVendaId.textContent = '#' + S.numeroVenda;
+
+    // Update client if set
+    if (S.clienteCpf) {
+      await window.pdv.vendaAtualizar({ venda_id: S.vendaId, cliente_cpf: S.clienteCpf, cliente_nome: S.clienteNome, cliente_id: S.clienteId });
+    }
+  }
+
+  // Register payment
+  const r = await window.pdv.pagtoRegistrar({ venda_id: S.vendaId, tipo_pagamento: _pgtoTipoSelecionado, valor: v });
+  if (!r.sucesso) { toast('Erro ao registrar pagamento.', 'err'); return; }
+
+  S.pgtoFeitos.push({ tipo_pagamento: _pgtoTipoSelecionado, valor: v, id: r.id });
+  S.primeiroPagemento = true;
+  document.getElementById('btn-pgto-cancel').disabled = true; // Can't cancel after first payment
+
+  document.getElementById('pgto-valor').value = '';
+  renderPgtoList();
+
+  const totalPago = S.pgtoFeitos.reduce((s, p) => s + p.valor, 0);
+  if (totalPago >= total) {
+    document.getElementById('pgto-valor').value = BRL(totalPago - total).replace('R$','').trim();
+    document.getElementById('btn-pgto-finalizar').disabled = false;
+  }
+
+  document.getElementById('pgto-valor').focus();
+}
+
+function renderPgtoList() {
+  const { total } = calcTotals();
+  const totalPago = S.pgtoFeitos.reduce((s, p) => s + p.valor, 0);
+  const troco     = totalPago - total;
+
+  const el = document.getElementById('pgto-list');
+  const TIPO_LABEL = { dinheiro:'💵 Dinheiro', pix:'📱 PIX', pos_debito:'💳 Débito', pos_credito:'💳 Crédito', pos_pix:'📲 POS PIX', convenio:'🤝 Convênio', outros:'⚙️ Outros' };
+
+  if (!S.pgtoFeitos.length) { el.innerHTML = '<div class="pgto-list-empty">Nenhum pagamento adicionado</div>'; }
+  else {
+    el.innerHTML = S.pgtoFeitos.map(p => `
+      <div class="pgto-item">
+        <span class="pgto-item-type">${TIPO_LABEL[p.tipo_pagamento] || p.tipo_pagamento}</span>
+        <span class="pgto-item-val">${BRL(p.valor)}</span>
+      </div>
+    `).join('');
+  }
+
+  document.getElementById('pgto-pago').textContent  = BRL(totalPago);
+  const trocoEl = document.getElementById('pgto-troco');
+  trocoEl.textContent  = troco >= 0 ? '🟢 Troco: ' + BRL(troco) : '🔴 Falta: ' + BRL(-troco);
+  trocoEl.className    = 'val ' + (troco >= 0 ? 'pos' : 'neg');
+  document.getElementById('btn-pgto-finalizar').disabled = totalPago < total;
+}
+
+document.getElementById('btn-pgto-finalizar').addEventListener('click', async () => {
+  const { total } = calcTotals();
+
+  const r = await window.pdv.vendaFinalizar({
+    venda_id:  S.vendaId,
+    itens:     S.itens,
+    desconto:  S.desconto,
+    acrescimo: S.acrescimo,
+  });
+
+  if (!r.sucesso) { toast(r.mensagem || 'Erro ao finalizar.', 'err'); return; }
+
+  const totalPago = S.pgtoFeitos.reduce((s, p) => s + p.valor, 0);
+  const troco     = totalPago - total;
+
+  closeModal('modal-pagamento');
+  toast('✓ Venda ' + (S.numeroVenda || '') + ' finalizada! Total: ' + BRL(total) + (troco > 0 ? ' · Troco: ' + BRL(troco) : ''), 'ok', 4000);
+  resetVenda();
+});
+
+document.getElementById('btn-pgto-cancel').addEventListener('click', () => {
+  if (S.primeiroPagemento) { toast('Impossível cancelar: já há pagamento registrado.', 'err'); return; }
+  closeModal('modal-pagamento');
+  focusCodigo();
+});
+
+/* ══════════════════════════════════════════════════════════
+   SANGRIA
+═══════════════════════════════════════════════════════════ */
+document.getElementById('btn-sangria').addEventListener('click', () => {
+  document.getElementById('sangria-valor').value  = '';
+  document.getElementById('sangria-motivo').value = '';
+  openModal('modal-sangria');
+  setTimeout(() => document.getElementById('sangria-valor').focus(), 100);
+});
+
+document.getElementById('btn-sangria-ok').addEventListener('click', async () => {
+  const v = parseMoney(document.getElementById('sangria-valor').value);
+  const m = document.getElementById('sangria-motivo').value.trim();
+  if (v <= 0) { toast('Informe o valor.', 'warn'); return; }
+  const r = await window.pdv.sangria({ valor: v, motivo: m });
+  if (r.sucesso) { closeModal('modal-sangria'); toast('Sangria de ' + BRL(v) + ' registrada.', 'ok'); focusCodigo(); }
+  else toast(r.mensagem, 'err');
+});
+
+/* ══════════════════════════════════════════════════════════
+   FECHAMENTO
+═══════════════════════════════════════════════════════════ */
+document.getElementById('btn-fechamento').addEventListener('click', async () => {
+  if (S.vendaAberta) { toast('Finalize ou cancele a venda antes de fechar o caixa.', 'warn'); return; }
+  const resumo = await window.pdv.caixaResumo();
+  if (!resumo) { toast('Erro ao obter resumo do caixa.', 'err'); return; }
+
+  const grid = document.getElementById('fechamento-grid');
+  const rows = [
+    ['Vendas Realizadas',  resumo.total_vendas,    'qty'],
+    ['Canceladas',         resumo.total_canceladas,'qty'],
+    ['Dinheiro',           resumo.total_dinheiro,  'brl'],
+    ['PIX',                resumo.total_pix,       'brl'],
+    ['Débito',             resumo.total_debito,    'brl'],
+    ['Crédito',            resumo.total_credito,   'brl'],
+    ['Convênio',           resumo.total_convenio,  'brl'],
+    ['Outros',             resumo.total_outros,    'brl'],
+    ['Sangrias',           resumo.total_sangrias,  'brl'],
+    ['TOTAL GERAL',        resumo.total_geral,     'total'],
+  ];
+  grid.innerHTML = rows.map(([l, v, t]) => `
+    <div class="fech-item ${t==='total'?'fech-total':''}">
+      <div class="lbl">${l}</div>
+      <div class="val">${t==='brl'||t==='total' ? BRL(v) : v}</div>
+    </div>
+  `).join('');
+
+  openModal('modal-fechamento');
+});
+
+document.getElementById('btn-fechar-caixa').addEventListener('click', async () => {
+  const r = await window.pdv.caixaFechar();
+  if (r.sucesso) {
+    closeModal('modal-fechamento');
+    toast('Caixa fechado com sucesso!', 'ok', 4000);
+    await window.pdv.logout();
+    S.usuario = null; S.caixaId = null;
+    showScreen('screen-login');
+    document.getElementById('login-login').value = '';
+    document.getElementById('login-senha').value = '';
+    document.getElementById('login-login').focus();
+  } else {
+    toast(r.mensagem, 'err');
+  }
+});
+
+/* ══════════════════════════════════════════════════════════
+   LOGOUT
+═══════════════════════════════════════════════════════════ */
+document.getElementById('btn-pdv-logout').addEventListener('click', async () => {
+  if (S.vendaAberta) { toast('Finalize ou cancele a venda antes de sair.', 'warn'); return; }
+  await window.pdv.logout();
+  S.usuario = null;
+  resetVenda();
+  showScreen('screen-login');
+  document.getElementById('login-login').value = '';
+  document.getElementById('login-senha').value = '';
+  document.getElementById('login-login').focus();
+});
+
+/* ══════════════════════════════════════════════════════════
+   KEYBOARD SHORTCUTS
+═══════════════════════════════════════════════════════════ */
+document.addEventListener('keydown', (e) => {
+  // If any modal is open, only allow Escape to close (if applicable)
+  const anyOpen = document.querySelector('.overlay.open');
+  if (anyOpen && anyOpen.id !== 'modal-supervisor') {
+    if (e.key === 'Escape') {
+      if (anyOpen.id === 'modal-pagamento' && S.primeiroPagemento) return; // can't escape payment
+      closeModal(anyOpen.id);
+      focusCodigo();
+      e.preventDefault();
+    }
+    return;
+  }
+  if (anyOpen?.id === 'modal-supervisor') return; // handled separately
+
+  // Ignore if typing in an input (except the barcode/qty)
+  const tag = e.target.tagName;
+  if (tag === 'INPUT' && e.target.id !== 'input-codigo' && e.target.id !== 'input-qtd') return;
+
+  switch (e.key) {
+    case 'F3':
+      e.preventDefault();
+      abrirVenda();
+      break;
+    case 'F2':
+      e.preventDefault();
+      finalizarVenda();
+      break;
+    case 'F4':
+      e.preventDefault();
+      if (S.vendaAberta) {
+        document.getElementById('cpf-input').value  = S.clienteCpf ? cpfMask(S.clienteCpf) : '';
+        document.getElementById('cpf-nome').value   = S.clienteNome !== 'CONSUMIDOR FINAL' ? S.clienteNome : '';
+        openModal('modal-cpf');
+        setTimeout(() => document.getElementById('cpf-input').focus(), 100);
+      }
+      break;
+    case 'F6':
+      e.preventDefault();
+      if (!S.vendaAberta) break;
+      pedirSupervisor('desconto_venda', 'Desconto na Venda', (ok) => {
+        if (!ok) { focusCodigo(); return; }
+        abrirModalDesconto('Desconto na Venda (R$)', S.desconto, (v) => {
+          S.desconto = v;
+          updateTotals();
+          focusCodigo();
+        });
+      });
+      break;
+    case 'F7':
+      e.preventDefault();
+      if (!S.vendaAberta || S.selectedIdx < 0) break;
+      pedirSupervisor('desconto_item', 'Desconto no Item', (ok) => {
+        if (!ok) { focusCodigo(); return; }
+        const item = S.itens[S.selectedIdx];
+        abrirModalDesconto(`Desconto em "${item.produto_nome}" (R$)`, item.desconto_item || 0, (v) => {
+          S.itens[S.selectedIdx].desconto_item = v;
+          renderItens(); updateTotals(); focusCodigo();
+        });
+      });
+      break;
+    case 'Delete':
+      e.preventDefault();
+      if (!S.vendaAberta || S.selectedIdx < 0) break;
+      pedirSupervisor('cancelar_item', 'Remover Item', (ok) => {
+        if (!ok) { focusCodigo(); return; }
+        S.itens.splice(S.selectedIdx, 1);
+        S.selectedIdx = S.itens.length > 0 ? S.itens.length - 1 : -1;
+        renderItens(); updateTotals(); focusCodigo();
+      });
+      break;
+    case 'F10':
+      e.preventDefault();
+      cancelarVenda();
+      break;
+    case 'F8':
+      e.preventDefault();
+      abrirBusca();
+      break;
+    case 'ArrowUp':
+      if (document.activeElement === D.inputCodigo || document.activeElement === D.inputQtd) {
+        e.preventDefault();
+        if (S.selectedIdx > 0) { S.selectedIdx--; renderItens(); }
+      }
+      break;
+    case 'ArrowDown':
+      if (document.activeElement === D.inputCodigo || document.activeElement === D.inputQtd) {
+        e.preventDefault();
+        if (S.selectedIdx < S.itens.length - 1) { S.selectedIdx++; renderItens(); }
+      }
+      break;
+  }
+});
+
+/* ══════════════════════════════════════════════════════════
+   BARCODE INPUT
+═══════════════════════════════════════════════════════════ */
+D.inputCodigo.addEventListener('keydown', async (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const cod = D.inputCodigo.value.trim();
+    if (!cod) return;
+    D.inputCodigo.value = '';
+    await adicionarPorCodigo(cod);
+  }
+});
+
+D.inputQtd.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { D.inputCodigo.focus(); }
+  if (e.key === 'Tab')   { e.preventDefault(); D.inputCodigo.focus(); }
+});
+
+/* ══════════════════════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════════════════════ */
+function focusCodigo() {
+  // Small delay to ensure modals don't steal focus back
+  setTimeout(() => {
+    if (!D.inputCodigo.disabled) D.inputCodigo.focus();
+  }, 50);
+}
+
+function clearInputs() {
+  D.inputCodigo.value = '';
+  D.inputQtd.value    = '';
+}
+
+/* ══════════════════════════════════════════════════════════
+   BOOT
+═══════════════════════════════════════════════════════════ */
+init();
+</script>
+</body>
+</html>
