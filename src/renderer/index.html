@@ -241,13 +241,35 @@ td.num{text-align:right}
 /* ═══════════════════════════════════════════════════════════
    FECHAMENTO MODAL
 ════════════════════════════════════════════════════════════ */
-#modal-fechamento .modal-card{max-width:460px}
-.fechamento-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:16px 0}
-.fech-item{background:var(--surf2);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px}
+/* FECHAMENTO MODAL — layout expandido */
+#modal-fechamento .modal-card{max-width:680px}
+.fechamento-header-info{display:flex;gap:10px;margin-bottom:14px}
+.fech-badge-pdv{background:var(--pri);color:#fff;border-radius:var(--r-sm);padding:6px 14px;font-size:12px;font-weight:700;letter-spacing:.06em}
+.fech-badge-op{background:var(--surf2);border:1px solid var(--border);border-radius:var(--r-sm);padding:6px 14px;font-size:12px;font-weight:600;color:var(--txt2)}
+.fechamento-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:0 0 10px 0}
+.fech-item{background:var(--surf2);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px 12px}
 .fech-item .lbl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--txt3)}
-.fech-item .val{font-family:var(--fmono);font-size:16px;font-weight:800;margin-top:3px}
-.fech-total{grid-column:1/-1;background:var(--pri-lt);border-color:var(--pri)}
-.fech-total .val{color:var(--pri)}
+.fech-item .val{font-family:var(--fmono);font-size:15px;font-weight:800;margin-top:3px;color:var(--txt)}
+.fech-item.fech-destaque{background:var(--pri-lt);border-color:var(--pri)}
+.fech-item.fech-destaque .val{color:var(--pri-txt)}
+.fech-item.fech-dinheiro{border-left:3px solid var(--grn)}
+.fech-item.fech-dinheiro .val{color:var(--grn)}
+.fech-item.fech-sangria{border-left:3px solid var(--red)}
+.fech-item.fech-sangria .val{color:var(--red)}
+.fech-separador{grid-column:1/-1;height:1px;background:var(--border);margin:4px 0}
+.fech-total-row{grid-column:1/-1;background:var(--pri);border-radius:var(--r-sm);padding:12px 16px;display:flex;justify-content:space-between;align-items:center}
+.fech-total-row .lbl{color:rgba(255,255,255,.8);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em}
+.fech-total-row .val{font-family:var(--fmono);font-size:20px;font-weight:900;color:#fff}
+.fech-saldo-row{grid-column:1/-1;background:var(--pri-lt);border:1.5px solid var(--pri);border-radius:var(--r-sm);padding:10px 14px;display:flex;justify-content:space-between;align-items:center}
+.fech-saldo-row .lbl{color:var(--pri-txt);font-size:11px;font-weight:700;text-transform:uppercase}
+.fech-saldo-row .val{font-family:var(--fmono);font-size:17px;font-weight:800;color:var(--pri-txt)}
+.fech-contado-section{margin-top:10px}
+.fech-contado-wrap{display:flex;flex-direction:column;gap:5px}
+.fech-contado-wrap label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--txt2)}
+.fech-diff{border-radius:var(--r-sm);padding:12px 16px;font-weight:700;font-size:14px;display:none;margin-top:8px;text-align:center}
+.fech-diff.quebra{background:var(--red-lt);color:var(--red);border:1.5px solid var(--red)}
+.fech-diff.sobra{background:var(--amb-lt);color:#92400E;border:1.5px solid var(--amb)}
+.fech-diff.zerado{background:var(--grn-lt);color:#065F46;border:1.5px solid var(--grn)}
 
 /* ═══════════════════════════════════════════════════════════
    ALERT / TOAST
@@ -616,12 +638,23 @@ td.num{text-align:right}
      MODAL: FECHAMENTO
 ═══════════════════════════════════════════════════════════ -->
 <div class="overlay" id="modal-fechamento">
-  <div class="modal-card" style="max-width:460px">
+  <div class="modal-card" style="max-width:680px">
     <div class="modal-header">
-      <div><div class="modal-title">🔒 Fechamento de Caixa</div><div class="modal-subtitle">Resumo do turno</div></div>
+      <div>
+        <div class="modal-title">🔒 Fechamento de Caixa</div>
+        <div class="modal-subtitle">Resumo do turno — confira os valores antes de confirmar</div>
+      </div>
     </div>
     <div class="modal-body">
+      <div class="fechamento-header-info" id="fechamento-header-info"></div>
       <div class="fechamento-grid" id="fechamento-grid"></div>
+      <div class="fech-contado-section">
+        <div class="fech-contado-wrap">
+          <label>💰 Caixa Físico Contado (R$)</label>
+          <input class="inp inp-lg inp-code" id="fechamento-contado" type="text" inputmode="decimal" placeholder="0,00" autocomplete="off">
+        </div>
+        <div class="fech-diff" id="fechamento-diff"></div>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" data-close="modal-fechamento">Cancelar</button>
@@ -1131,7 +1164,15 @@ document.getElementById('btn-sup-cancel').addEventListener('click', () => {
   if (S.supCallback) S.supCallback(false);
   S.supCallback = null;
 });
-document.getElementById('sup-codigo').addEventListener('keydown', e => { if (e.key === 'Enter') confirmarSupervisor(); });
+document.getElementById('sup-codigo').addEventListener('keydown', e => {
+  if (e.key === 'Enter')  confirmarSupervisor();
+  if (e.key === 'Escape') { closeModal('modal-supervisor'); if (S.supCallback) S.supCallback(false); S.supCallback = null; }
+});
+document.getElementById('sup-login-pass').addEventListener('keydown', e => {
+  if (e.key === 'Enter')  confirmarSupervisor();
+  if (e.key === 'Escape') { closeModal('modal-supervisor'); if (S.supCallback) S.supCallback(false); S.supCallback = null; }
+});
+document.getElementById('sup-login-user').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('sup-login-pass').focus(); });
 
 /* ══════════════════════════════════════════════════════════
    DESCONTO
@@ -1438,36 +1479,93 @@ document.getElementById('btn-sangria-ok').addEventListener('click', async () => 
   if (r.sucesso) { closeModal('modal-sangria'); toast('Sangria de ' + BRL(v) + ' registrada.', 'ok'); focusCodigo(); }
   else toast(r.mensagem, 'err');
 });
+document.getElementById('sangria-motivo').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('btn-sangria-ok').click(); });
 
 /* ══════════════════════════════════════════════════════════
    FECHAMENTO
 ═══════════════════════════════════════════════════════════ */
+let _saldoEsperado = 0;
+
 document.getElementById('btn-fechamento').addEventListener('click', async () => {
   if (S.vendaAberta) { toast('Finalize ou cancele a venda antes de fechar o caixa.', 'warn'); return; }
   const resumo = await window.pdv.caixaResumo();
   if (!resumo) { toast('Erro ao obter resumo do caixa.', 'err'); return; }
 
-  const grid = document.getElementById('fechamento-grid');
-  const rows = [
-    ['Vendas Realizadas',  resumo.total_vendas,    'qty'],
-    ['Canceladas',         resumo.total_canceladas,'qty'],
-    ['Dinheiro',           resumo.total_dinheiro,  'brl'],
-    ['PIX',                resumo.total_pix,       'brl'],
-    ['Débito',             resumo.total_debito,    'brl'],
-    ['Crédito',            resumo.total_credito,   'brl'],
-    ['Convênio',           resumo.total_convenio,  'brl'],
-    ['Outros',             resumo.total_outros,    'brl'],
-    ['Sangrias',           resumo.total_sangrias,  'brl'],
-    ['TOTAL GERAL',        resumo.total_geral,     'total'],
-  ];
-  grid.innerHTML = rows.map(([l, v, t]) => `
-    <div class="fech-item ${t==='total'?'fech-total':''}">
-      <div class="lbl">${l}</div>
-      <div class="val">${t==='brl'||t==='total' ? BRL(v) : v}</div>
-    </div>
-  `).join('');
+  // Saldo esperado em dinheiro fisico:
+  // total_dinheiro = TOTAL das vendas pagas em dinheiro (nao o valor bruto recebido).
+  // Ex: venda R$ 62, cliente pagou R$ 70, troco R$ 8.
+  //     total_dinheiro = R$ 62. Sangria de R$ 62 -> saldo = abertura. Sem quebra.
+  _saldoEsperado = (resumo.sessao?.valor_abertura || 0)
+                 + (resumo.total_dinheiro || 0)
+                 - (resumo.total_sangrias || 0);
 
+  const status = await window.pdv.sistemaStatus();
+  const headerEl = document.getElementById('fechamento-header-info');
+  if (headerEl) {
+    const hora = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    headerEl.innerHTML =
+      '<span class="fech-badge-pdv">PDV ' + (status?.numero_pdv || '01') + '</span>' +
+      '<span class="fech-badge-op">' + (S.usuario?.nome || '—') + '</span>' +
+      '<span class="fech-badge-op">' + hora + '</span>';
+  }
+
+  const grid = document.getElementById('fechamento-grid');
+
+  const formas = [
+    { label: '💵 Dinheiro', val: resumo.total_dinheiro,  cls: 'fech-dinheiro' },
+    { label: '📱 PIX',       val: resumo.total_pix,        cls: '' },
+    { label: '💳 Débito', val: resumo.total_debito,   cls: '' },
+    { label: '💳 Crédito', val: resumo.total_credito, cls: '' },
+    { label: '🤝 Convênio', val: resumo.total_convenio, cls: '' },
+    { label: '⚙️ Outros',   val: resumo.total_outros,    cls: '' },
+  ];
+
+  let html = formas.map(f => '<div class="fech-item ' + f.cls + '"><div class="lbl">' + f.label + '</div><div class="val">' + BRL(f.val) + '</div></div>').join('');
+  html += '<div class="fech-separador"></div>';
+  html +=
+    '<div class="fech-item"><div class="lbl">✅ Vendas</div><div class="val" style="color:var(--grn)">' + resumo.total_vendas + '</div></div>' +
+    '<div class="fech-item"><div class="lbl">❌ Canceladas</div><div class="val" style="color:var(--txt3)">' + resumo.total_canceladas + '</div></div>' +
+    '<div class="fech-item fech-sangria"><div class="lbl">➖ Sangrias</div><div class="val">' + BRL(resumo.total_sangrias) + '</div></div>' +
+    '<div class="fech-item fech-destaque"><div class="lbl">🏦 Abertura</div><div class="val">' + BRL(resumo.sessao?.valor_abertura || 0) + '</div></div>' +
+    '<div class="fech-total-row" style="grid-column:2/-1"><div class="lbl">TOTAL GERAL (vendas)</div><div class="val">' + BRL(resumo.total_geral || 0) + '</div></div>' +
+    '<div class="fech-saldo-row"><div class="lbl">💰 Saldo Esperado &nbsp;<small style="font-weight:400;opacity:.75">(abertura + dinheiro − sangrias)</small></div><div class="val">' + BRL(_saldoEsperado) + '</div></div>';
+
+  grid.innerHTML = html;
+  document.getElementById('fechamento-contado').value = '';
+  const diffEl = document.getElementById('fechamento-diff');
+  diffEl.style.display = 'none';
+  diffEl.className = 'fech-diff';
   openModal('modal-fechamento');
+  setTimeout(() => document.getElementById('fechamento-contado').focus(), 150);
+});
+
+
+// Cálculo dinâmico de quebra/sobra conforme operador digita o valor contado
+document.getElementById('fechamento-contado').addEventListener('input', () => {
+  const raw = document.getElementById('fechamento-contado').value.trim();
+  const diffEl = document.getElementById('fechamento-diff');
+  if (!raw) { diffEl.style.display = 'none'; return; }
+
+  const contado = parseMoney(raw);
+  const diff    = contado - _saldoEsperado;
+
+  diffEl.style.display = 'block';
+  diffEl.className = 'fech-diff';
+
+  if (Math.abs(diff) < 0.01) {
+    diffEl.classList.add('zerado');
+    diffEl.textContent = '✓ CAIXA ZERADO — Sem diferença';
+  } else if (diff < 0) {
+    diffEl.classList.add('quebra');
+    diffEl.textContent = `⚠ QUEBRA DE CAIXA: ${BRL(Math.abs(diff))} a menos que o esperado`;
+  } else {
+    diffEl.classList.add('sobra');
+    diffEl.textContent = `↑ SOBRA DE CAIXA: ${BRL(diff)} a mais que o esperado`;
+  }
+});
+
+document.getElementById('fechamento-contado').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('btn-fechar-caixa').click();
 });
 
 document.getElementById('btn-fechar-caixa').addEventListener('click', async () => {
@@ -1491,6 +1589,7 @@ document.getElementById('btn-fechar-caixa').addEventListener('click', async () =
 ═══════════════════════════════════════════════════════════ */
 document.getElementById('btn-pdv-logout').addEventListener('click', async () => {
   if (S.vendaAberta) { toast('Finalize ou cancele a venda antes de sair.', 'warn'); return; }
+  if (S.caixaId)     { toast('Feche o caixa antes de sair.', 'warn'); return; }
   await window.pdv.logout();
   S.usuario = null;
   resetVenda();
@@ -1508,7 +1607,9 @@ document.addEventListener('keydown', (e) => {
   const anyOpen = document.querySelector('.overlay.open');
   if (anyOpen && anyOpen.id !== 'modal-supervisor') {
     if (e.key === 'Escape') {
-      if (anyOpen.id === 'modal-pagamento' && S.primeiroPagemento) return; // can't escape payment
+      // Modais obrigatórios — ESC não fecha
+      if (anyOpen.id === 'modal-abertura') return;
+      if (anyOpen.id === 'modal-pagamento' && S.primeiroPagemento) return; // pagamento já iniciado
       closeModal(anyOpen.id);
       focusCodigo();
       e.preventDefault();
@@ -1602,10 +1703,43 @@ document.addEventListener('keydown', (e) => {
 D.inputCodigo.addEventListener('keydown', async (e) => {
   if (e.key === 'Enter') {
     e.preventDefault();
-    const cod = D.inputCodigo.value.trim();
-    if (!cod) return;
+    const input = D.inputCodigo.value.trim();
+    if (!input) return;
+
+    // ── Lançamento rápido de quantidade: "N*" ou "N*codigo" ──────────────
+    // Exemplos:
+    //   "3*"        → define qtd = 3 no campo QTD, foca código novamente
+    //   "3*7891234" → define qtd = 3 e já adiciona o produto 7891234
+    //   "10*"       → aguarda o próximo scan com quantidade 10
+    const multMatch = input.match(/^(\d+)\*(.*)$/);
+    if (multMatch) {
+      const qtd = parseInt(multMatch[1], 10);
+      const cod = multMatch[2].trim();
+      D.inputCodigo.value = '';
+
+      if (qtd <= 0 || qtd > 9999) {
+        toast('Quantidade inválida (1–9999).', 'warn');
+        focusCodigo();
+        return;
+      }
+
+      // Coloca no campo QTD para que adicionarPorCodigo use automaticamente
+      D.inputQtd.value = String(qtd);
+
+      if (cod) {
+        // "N*codigo" → adiciona diretamente
+        await adicionarPorCodigo(cod);
+      } else {
+        // "N*" sozinho → mostra feedback e aguarda próximo scan
+        toast(`Quantidade: ${qtd}× — bipie ou digite o produto`, 'info', 1800);
+        focusCodigo();
+      }
+      return;
+    }
+
+    // ── Código normal ─────────────────────────────────────────────────────
     D.inputCodigo.value = '';
-    await adicionarPorCodigo(cod);
+    await adicionarPorCodigo(input);
   }
 });
 

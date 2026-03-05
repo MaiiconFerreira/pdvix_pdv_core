@@ -52,8 +52,6 @@ app.whenReady().then(async () => {
   await verificarOnline();
   setInterval(verificarOnline, 30_000);
 
-  // Aguarda a janela carregar antes de disparar a carga — garante que o
-  // renderer já está pronto para receber eventos se necessário
   mainWindow.webContents.once('did-finish-load', async () => {
     if (isOnline) {
       logger.info('Startup: iniciando carga inicial automática...');
@@ -97,7 +95,6 @@ ipcMain.handle('auth:login', async (_e, { login, senha }) => {
           const u    = resp.data.data.user;
           const hash = await bcrypt.hash(senha, 10);
 
-          // Preserva perfil e senha local — upsert pelo id
           db.prepare(`
             INSERT OR REPLACE INTO usuarios
               (id, login, password_local, perfil, nome, cpf, status, atualizado_em)
@@ -183,13 +180,13 @@ ipcMain.handle('caixa:resumo', () => {
 
   const totais = db.prepare(`
     SELECT
-      COALESCE(SUM(CASE WHEN p.tipo_pagamento = 'dinheiro'            THEN p.valor ELSE 0 END), 0) AS total_dinheiro,
-      COALESCE(SUM(CASE WHEN p.tipo_pagamento IN ('pix','pos_pix')    THEN p.valor ELSE 0 END), 0) AS total_pix,
-      COALESCE(SUM(CASE WHEN p.tipo_pagamento = 'pos_debito'          THEN p.valor ELSE 0 END), 0) AS total_debito,
-      COALESCE(SUM(CASE WHEN p.tipo_pagamento = 'pos_credito'         THEN p.valor ELSE 0 END), 0) AS total_credito,
-      COALESCE(SUM(CASE WHEN p.tipo_pagamento = 'convenio'            THEN p.valor ELSE 0 END), 0) AS total_convenio,
-      COALESCE(SUM(CASE WHEN p.tipo_pagamento = 'outros'              THEN p.valor ELSE 0 END), 0) AS total_outros,
-      COALESCE(SUM(p.valor), 0)   AS total_geral,
+      COALESCE(SUM(CASE WHEN p.tipo_pagamento = 'dinheiro'            THEN v.total ELSE 0 END), 0) AS total_dinheiro,
+      COALESCE(SUM(CASE WHEN p.tipo_pagamento IN ('pix','pos_pix')    THEN v.total ELSE 0 END), 0) AS total_pix,
+      COALESCE(SUM(CASE WHEN p.tipo_pagamento = 'pos_debito'          THEN v.total ELSE 0 END), 0) AS total_debito,
+      COALESCE(SUM(CASE WHEN p.tipo_pagamento = 'pos_credito'         THEN v.total ELSE 0 END), 0) AS total_credito,
+      COALESCE(SUM(CASE WHEN p.tipo_pagamento = 'convenio'            THEN v.total ELSE 0 END), 0) AS total_convenio,
+      COALESCE(SUM(CASE WHEN p.tipo_pagamento = 'outros'              THEN v.total ELSE 0 END), 0) AS total_outros,
+      COALESCE(SUM(v.total), 0)   AS total_geral,
       COUNT(DISTINCT v.id)        AS total_vendas
     FROM vendas v
     LEFT JOIN pagamentos_venda p ON p.venda_id = v.id AND p.status = 'confirmado'
@@ -206,39 +203,40 @@ ipcMain.handle('caixa:resumo', () => {
 
   const sessaoInfo = db.prepare(`SELECT * FROM caixa_sessoes WHERE id = ?`).get(sid);
 
-  // Saldo esperado em caixa: abertura + dinheiro recebido - sangrias
+  // Saldo esperado: abertura + dinheiro recebido - sangrias
   const saldo_caixa = (sessaoInfo.valor_abertura || 0)
-                    + (totais.total_dinheiro || 0)
-                    - (sangrias.total || 0);
+                    + (totais.total_dinheiro      || 0)
+                    - (sangrias.total             || 0);
 
   return {
     ...totais,
     total_canceladas: canceladas.cnt,
     total_sangrias:   sangrias.total,
-    saldo_caixa,        // valor esperado em espécie na gaveta
+    saldo_caixa,
     sessao:           sessaoInfo,
   };
 });
 
-ipcMain.handle('caixa:fechar', () => {
+ipcMain.handle('caixa:fechar', async () => {
   if (!sessao?.caixa_sessao_id) return { sucesso: false, mensagem: 'Nenhum caixa aberto.' };
   const sid = sessao.caixa_sessao_id;
 
-  // Bloqueia fechamento com venda em aberto
   const aberta = db.prepare(`
     SELECT id FROM vendas WHERE caixa_sessao_id = ? AND status = 'aberta'
   `).get(sid);
   if (aberta) return { sucesso: false, mensagem: 'Existe venda em andamento. Finalize ou cancele antes de fechar.' };
 
-  // Calcula totais de pagamento por modalidade
+  // Totais por forma de pagamento — soma dos totais das VENDAS (nunca o lançado no pagamento bruto)
+  // Ou seja: para cada venda finalizada, soma o total da venda pro tipo de pagamento correspondente.
+  // Isso garante que dinheiro = total vendido em dinheiro (não o troco que foi dado).
   const t = db.prepare(`
     SELECT
-      COALESCE(SUM(CASE WHEN p.tipo_pagamento = 'dinheiro'         THEN p.valor ELSE 0 END), 0) AS d,
-      COALESCE(SUM(CASE WHEN p.tipo_pagamento IN ('pix','pos_pix') THEN p.valor ELSE 0 END), 0) AS pi,
-      COALESCE(SUM(CASE WHEN p.tipo_pagamento = 'pos_debito'       THEN p.valor ELSE 0 END), 0) AS de,
-      COALESCE(SUM(CASE WHEN p.tipo_pagamento = 'pos_credito'      THEN p.valor ELSE 0 END), 0) AS cr,
-      COALESCE(SUM(CASE WHEN p.tipo_pagamento = 'convenio'         THEN p.valor ELSE 0 END), 0) AS co,
-      COALESCE(SUM(CASE WHEN p.tipo_pagamento = 'outros'           THEN p.valor ELSE 0 END), 0) AS ou,
+      COALESCE(SUM(CASE WHEN p.tipo_pagamento = 'dinheiro'         THEN v.total ELSE 0 END), 0) AS d,
+      COALESCE(SUM(CASE WHEN p.tipo_pagamento IN ('pix','pos_pix') THEN v.total ELSE 0 END), 0) AS pi,
+      COALESCE(SUM(CASE WHEN p.tipo_pagamento = 'pos_debito'       THEN v.total ELSE 0 END), 0) AS de,
+      COALESCE(SUM(CASE WHEN p.tipo_pagamento = 'pos_credito'      THEN v.total ELSE 0 END), 0) AS cr,
+      COALESCE(SUM(CASE WHEN p.tipo_pagamento = 'convenio'         THEN v.total ELSE 0 END), 0) AS co,
+      COALESCE(SUM(CASE WHEN p.tipo_pagamento = 'outros'           THEN v.total ELSE 0 END), 0) AS ou,
       COUNT(DISTINCT v.id) AS tv
     FROM vendas v
     LEFT JOIN pagamentos_venda p ON p.venda_id = v.id AND p.status = 'confirmado'
@@ -249,10 +247,12 @@ ipcMain.handle('caixa:fechar', () => {
     SELECT COUNT(*) AS cnt FROM vendas WHERE caixa_sessao_id = ? AND status = 'cancelada'
   `).get(sid);
 
-  // Soma de sangrias
   const ts = db.prepare(`
     SELECT COALESCE(SUM(valor), 0) AS total FROM sangrias WHERE caixa_sessao_id = ?
   `).get(sid);
+
+  const sessaoInfo = db.prepare(`SELECT * FROM caixa_sessoes WHERE id = ?`).get(sid);
+  const saldoEsperado = (sessaoInfo.valor_abertura || 0) + (t.d || 0) - (ts.total || 0);
 
   db.prepare(`
     UPDATE caixa_sessoes SET
@@ -272,7 +272,11 @@ ipcMain.handle('caixa:fechar', () => {
 
   const resultado = db.prepare(`SELECT * FROM caixa_sessoes WHERE id = ?`).get(sid);
   sessao.caixa_sessao_id = null;
-  logger.info(`Caixa fechado: sessao ${sid} — total vendas R$ ${t.d + t.pi + t.de + t.cr + t.co + t.ou}`);
+  logger.info(`Caixa fechado: sessao ${sid} — total R$ ${(t.d + t.pi + t.de + t.cr + t.co + t.ou).toFixed(2)}`);
+
+  // Tenta sincronizar o caixa fechado para o servidor (silencioso se offline)
+  try { await syncCaixaUnica(sid); } catch { /* offline — sync.js tentará depois */ }
+
   return { sucesso: true, sessao: resultado };
 });
 
@@ -303,7 +307,9 @@ ipcMain.handle('produto:buscar', (_e, { termo }) => {
 
   // Por código de barras
   const cb = db.prepare(`
-    SELECT p.*, pcb.codigo_barras, pcb.tipo_embalagem, pcb.preco_venda AS preco_embalagem
+    SELECT p.id, p.nome, p.unidade_base, p.fator_embalagem,
+           pcb.codigo_barras, pcb.tipo_embalagem,
+           pcb.preco_venda AS preco_embalagem
     FROM produtos_codigos_barras pcb
     JOIN produtos p ON p.id = pcb.produto_id
     WHERE pcb.codigo_barras = ? AND p.bloqueado = 0
@@ -311,26 +317,25 @@ ipcMain.handle('produto:buscar', (_e, { termo }) => {
   `).get(termo);
   if (cb) return { encontrado: true, produto: cb, origem: 'barcode' };
 
-  // Por código alternativo
+  // Por código interno alternativo
   const num = parseInt(termo);
   if (num > 0) {
     const ca = db.prepare(`
       SELECT * FROM produtos WHERE codigo_interno_alternativo = ? AND bloqueado = 0 LIMIT 1
     `).get(num);
     if (ca) {
-      const cb2 = db.prepare(`
+      const cbAlt = db.prepare(`
         SELECT * FROM produtos_codigos_barras WHERE produto_id = ? AND tipo_embalagem = 'UN' LIMIT 1
-      `).get(ca.id)
-        || db.prepare(`
+      `).get(ca.id) || db.prepare(`
         SELECT * FROM produtos_codigos_barras WHERE produto_id = ? LIMIT 1
       `).get(ca.id);
       return {
         encontrado: true,
         produto: {
           ...ca,
-          tipo_embalagem:  cb2?.tipo_embalagem || 'UN',
-          codigo_barras:   cb2?.codigo_barras  || '',
-          preco_embalagem: cb2?.preco_venda    || ca.preco_venda,
+          tipo_embalagem:  cbAlt?.tipo_embalagem || 'UN',
+          codigo_barras:   cbAlt?.codigo_barras  || '',
+          preco_embalagem: cbAlt?.preco_venda    || ca.preco_venda,
         },
         origem: 'codigo_alternativo',
       };
@@ -373,7 +378,7 @@ ipcMain.handle('venda:cancelar', (_e, { venda_id }) => {
   const pgto = db.prepare(`
     SELECT id FROM pagamentos_venda WHERE venda_id = ? AND status = 'confirmado' LIMIT 1
   `).get(venda_id);
-  if (pgto) return { sucesso: false, mensagem: 'Venda com pagamento já registrado não pode ser cancelada.' };
+  if (pgto) return { sucesso: false, mensagem: 'Venda com pagamento confirmado não pode ser cancelada.' };
 
   db.prepare(`UPDATE vendas SET status = 'cancelada' WHERE id = ?`).run(venda_id);
   return { sucesso: true };
@@ -394,7 +399,6 @@ ipcMain.handle('venda:atualizar', (_e, data) => {
 
 ipcMain.handle('venda:finalizar', async (_e, { venda_id, itens, desconto, acrescimo }) => {
   try {
-    // ── Validações de negócio ─────────────────────────────────────────────────
     if (!Array.isArray(itens) || itens.length === 0) {
       return { sucesso: false, mensagem: 'A venda precisa ter ao menos um item.' };
     }
@@ -406,36 +410,30 @@ ipcMain.handle('venda:finalizar', async (_e, { venda_id, itens, desconto, acresc
       if (!item.quantidade || item.quantidade <= 0) {
         return { sucesso: false, mensagem: `Item #${i + 1}: quantidade deve ser maior que zero.` };
       }
-      if (item.valor_unitario < 0) {
-        return { sucesso: false, mensagem: `Item #${i + 1}: valor unitário inválido.` };
-      }
     }
 
-    // Calcula subtotal considerando desconto por item
     const subtotal = itens.reduce(
       (s, i) => s + (i.valor_unitario * i.quantidade) - (i.desconto_item || 0),
       0
     );
 
-    const desc = parseFloat(desconto) || 0;
+    const desc = parseFloat(desconto)  || 0;
     const acr  = parseFloat(acrescimo) || 0;
 
-    // Desconto não pode ser maior que o subtotal
     if (desc < 0) {
       return { sucesso: false, mensagem: 'Desconto não pode ser negativo.' };
     }
     if (desc > subtotal + acr) {
-      return { sucesso: false, mensagem: `Desconto (R$ ${desc.toFixed(2)}) não pode ser maior que o valor da venda (R$ ${(subtotal + acr).toFixed(2)}).` };
+      return { sucesso: false, mensagem: `Desconto (R$ ${desc.toFixed(2)}) maior que o valor da venda.` };
     }
 
     const total = Math.max(0, subtotal - desc + acr);
 
-    // Venda com total zero não é permitida
     if (total <= 0) {
-      return { sucesso: false, mensagem: 'O total da venda não pode ser zero ou negativo. Ajuste o desconto.' };
+      return { sucesso: false, mensagem: 'O total da venda não pode ser zero ou negativo.' };
     }
 
-    // ── Transação: grava venda, itens ──────────────────────────────────────
+    // Transação: grava venda + itens no SQLite local
     const finOp = db.transaction(() => {
       db.prepare(`
         UPDATE vendas
@@ -467,8 +465,8 @@ ipcMain.handle('venda:finalizar', async (_e, { venda_id, itens, desconto, acresc
     const result = finOp();
     logger.info(`Venda #${venda_id} finalizada — total R$ ${result.total.toFixed(2)}`);
 
-    // Tenta sync imediato com servidor (silencioso se falhar)
-    try { await syncVendaUnica(venda_id); } catch { /* continua — sync.js tentará depois */ }
+    // Tenta sync imediato (silencioso se offline — sync.js tentará depois)
+    try { await syncVendaUnica(venda_id); } catch { /* offline ou erro de rede */ }
 
     return { sucesso: true, ...result };
 
@@ -568,17 +566,12 @@ ipcMain.handle('sistema:status', () => ({
   ultima_sync:  cfg('ultima_sincronizacao') || 'Nunca',
 }));
 
-/**
- * executarCargaInicial — lógica central da carga inicial.
- * Chamada automaticamente no startup (did-finish-load) e também via IPC
- * quando o renderer chamar pdv.cargaInicial() manualmente.
- */
 async function executarCargaInicial() {
   if (!isOnline) return { sucesso: false, mensagem: 'Sem conexão com o servidor.' };
 
   const token = cfg('api_token');
   if (!token) {
-    return { sucesso: false, mensagem: 'api_token não configurado. Configure config.api_token no SQLite local.' };
+    return { sucesso: false, mensagem: 'api_token não configurado.' };
   }
 
   try {
@@ -595,27 +588,22 @@ async function executarCargaInicial() {
     const { produtos, codigos_barras, usuarios, supervisores_cartoes, clientes } = resp.data.data;
 
     const load = db.transaction(() => {
-
       const insProd = db.prepare(`
         INSERT OR REPLACE INTO produtos
           (id, nome, codigo_interno_alternativo, preco_venda, fator_embalagem, unidade_base, bloqueado, atualizado_em)
         VALUES (?,?,?,?,?,?,?, datetime('now'))
       `);
       for (const p of (produtos || [])) {
-        insProd.run(
-          p.id, p.nome, p.codigo_interno_alternativo || null,
-          p.preco_venda, p.fator_embalagem, p.unidade_base, p.bloqueado || 0
-        );
+        insProd.run(p.id, p.nome, p.codigo_interno_alternativo || null, p.preco_venda, p.fator_embalagem, p.unidade_base, p.bloqueado || 0);
       }
 
       if ((codigos_barras || []).length > 0) {
         const prodIds = [...new Set(codigos_barras.map(c => c.produto_id))];
-        const delCb = db.prepare(`DELETE FROM produtos_codigos_barras WHERE produto_id = ?`);
+        const delCb   = db.prepare(`DELETE FROM produtos_codigos_barras WHERE produto_id = ?`);
         for (const pid of prodIds) delCb.run(pid);
 
         const insCb = db.prepare(`
-          INSERT OR REPLACE INTO produtos_codigos_barras
-            (produto_id, tipo_embalagem, codigo_barras, preco_venda)
+          INSERT OR REPLACE INTO produtos_codigos_barras (produto_id, tipo_embalagem, codigo_barras, preco_venda)
           VALUES (?,?,?,?)
         `);
         for (const cb of codigos_barras) {
@@ -641,12 +629,9 @@ async function executarCargaInicial() {
         VALUES (?,?,?,?,?,?,?,?,?)
       `);
       for (const s of (supervisores_cartoes || [])) {
-        insSup.run(
-          s.id, s.usuario_id, s.codigo_cartao, s.descricao || null,
+        insSup.run(s.id, s.usuario_id, s.codigo_cartao, s.descricao || null,
           s.permite_desconto_item || 0, s.permite_desconto_venda || 0,
-          s.permite_cancelar_item || 0, s.permite_cancelar_venda || 0,
-          s.ativo || 1
-        );
+          s.permite_cancelar_item || 0, s.permite_cancelar_venda || 0, s.ativo || 1);
       }
 
       const insCli = db.prepare(`
@@ -659,10 +644,8 @@ async function executarCargaInicial() {
     });
 
     load();
-
     db.prepare(`UPDATE config SET valor = datetime('now') WHERE chave = 'ultima_sincronizacao'`).run();
-
-    logger.info(`Carga inicial concluída — ${produtos?.length || 0} produtos, ${codigos_barras?.length || 0} cód. barras, ${usuarios?.length || 0} usuários`);
+    logger.info(`Carga inicial: ${produtos?.length || 0} produtos, ${codigos_barras?.length || 0} códigos, ${usuarios?.length || 0} usuários`);
 
     return {
       sucesso: true,
@@ -685,73 +668,169 @@ async function executarCargaInicial() {
   }
 }
 
-// IPC — mantém compatibilidade com chamadas manuais do renderer (ex: DevTools)
 ipcMain.handle('sistema:cargaInicial', () => executarCargaInicial());
 
-
 // ═══════════════════════════════════════════════════════════════════════════════
-// SYNC HELPER
+// SYNC — endpoint dedicado com token (sem sessão PHP)
 // ═══════════════════════════════════════════════════════════════════════════════
 
+/**
+ * syncVendaUnica — envia uma venda finalizada para o servidor via
+ * POST /api/pdv/sync-venda?token=XXX
+ *
+ * ─ Não depende de sessão PHP (token estático igual à carga inicial).
+ * ─ Idempotente: reenvios do mesmo numero_venda não duplicam dados.
+ * ─ Envia venda + itens + pagamentos em uma única requisição atômica.
+ * ─ O servidor cuida da baixa de estoque e do status 'finalizada'.
+ *
+ * @param {number} venda_id  ID local (SQLite) da venda
+ */
 async function syncVendaUnica(venda_id) {
-  if (!isOnline) return;
+  const token      = cfg('api_token');
+  const servidorUrl = cfg('servidor_url');
 
-  const venda = db.prepare(`SELECT * FROM vendas WHERE id = ? AND sincronizado = 0`).get(venda_id);
-  if (!venda) return;
+  if (!token)       throw new Error('api_token não configurado no config local.');
+  if (!servidorUrl) throw new Error('servidor_url não configurado no config local.');
 
-  const itens  = db.prepare(`SELECT * FROM venda_itens  WHERE venda_id = ?`).all(venda_id);
-  const pagtos = db.prepare(`SELECT * FROM pagamentos_venda WHERE venda_id = ?`).all(venda_id);
+  // Só sincroniza vendas finalizadas e não sincronizadas
+  const venda = db.prepare(`
+    SELECT * FROM vendas WHERE id = ? AND sincronizado = 0 AND status = 'finalizada'
+  `).get(venda_id);
 
-  const base = cfg('servidor_url');
+  if (!venda) return; // já sincronizada ou não finalizada — nada a fazer
 
-  // Monta payload de criação da venda no servidor
+  const itens = db.prepare(`
+    SELECT produto_id, produto_nome, quantidade, valor_unitario,
+           desconto_item, subtotal, codigo_barras_usado, unidade_origem
+    FROM venda_itens WHERE venda_id = ?
+  `).all(venda_id);
+
+  const pagamentos = db.prepare(`
+    SELECT tipo_pagamento, valor, referencia_externa
+    FROM pagamentos_venda WHERE venda_id = ?
+  `).all(venda_id);
+
   const payload = {
-    desconto:   venda.desconto,
-    acrescimo:  venda.acrescimo,
-    cliente_id: venda.cliente_id || null,
-    observacao: venda.observacao || '',
-    itens: itens.map(i => ({
-      produto_id:     i.produto_id,
-      quantidade:     i.quantidade,
-      valor_unitario: i.valor_unitario,
-    })),
+    numero_venda:  venda.numero_venda,
+    usuario_id:    venda.usuario_id,
+    cliente_id:    venda.cliente_id    || null,
+    cliente_cpf:   venda.cliente_cpf   || null,
+    cliente_nome:  venda.cliente_nome  || 'CONSUMIDOR FINAL',
+    subtotal:      venda.subtotal      || 0,
+    desconto:      venda.desconto      || 0,
+    acrescimo:     venda.acrescimo     || 0,
+    total:         venda.total,
+    data_venda:    venda.data_venda,
+    observacao:    venda.observacao    || null,
+    itens,
+    pagamentos,
   };
 
   try {
-    // 1. Cria venda no servidor
-    const respVenda = await axios.post(base + '/api/vendas', payload, { timeout: 10000 });
-    if (respVenda.data.status !== 'success') throw new Error(respVenda.data.message);
+    const resp = await axios.post(
+      `${servidorUrl}/api/pdv/sync-venda`,
+      payload,
+      {
+        params:  { token },
+        timeout: 12_000,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
 
-    const servidorVendaId = respVenda.data.data.id;
-
-    // 2. Registra cada pagamento
-    for (const p of pagtos) {
-      await axios.post(base + '/api/pagamentos', {
-        venda_id:           servidorVendaId,
-        tipo_pagamento:     p.tipo_pagamento,
-        valor:              p.valor,
-        status:             'confirmado',
-        referencia_externa: p.referencia_externa || null,
-      }, { timeout: 10000 });
+    if (resp.data.status !== 'success') {
+      throw new Error(resp.data.message || 'Resposta inesperada do servidor.');
     }
 
-    // 3. Finaliza a venda no servidor
-    await axios.post(base + '/api/vendas/finalizar', { id: servidorVendaId }, { timeout: 10000 });
+    const idServidor = resp.data.data?.id_servidor ?? null;
 
-    // 4. Marca como sincronizado no SQLite local
-    db.prepare(`UPDATE vendas          SET sincronizado = 1, id_servidor = ? WHERE id = ?`).run(servidorVendaId, venda_id);
-    db.prepare(`UPDATE pagamentos_venda SET sincronizado = 1 WHERE venda_id = ?`).run(venda_id);
+    // Marca como sincronizado no SQLite local
+    db.prepare(`
+      UPDATE vendas SET sincronizado = 1, id_servidor = ? WHERE id = ?
+    `).run(idServidor, venda_id);
 
-    logger.info(`Venda local #${venda_id} → servidor #${servidorVendaId}`);
+    db.prepare(`
+      UPDATE pagamentos_venda SET sincronizado = 1 WHERE venda_id = ?
+    `).run(venda_id);
+
+    logger.info(`Venda local #${venda_id} → servidor #${idServidor}`);
 
   } catch (err) {
+    // Re-lança para que sync.js possa registrar e interromper o loop
     logger.error('syncVendaUnica falhou: ' + err.message, {
       status: err.response?.status ?? null,
-      body:   err.response?.data   ?? null,
       url:    err.config?.url      ?? null,
+      body:   err.response?.data   ?? null,
     });
     throw err;
   }
 }
 
-module.exports = { syncVendaUnica };
+/**
+ * syncCaixaUnica — envia uma sessão de caixa fechada para o servidor
+ * POST /api/pdv/sync-caixa?token=XXX
+ */
+async function syncCaixaUnica(caixaId) {
+  const token       = cfg('api_token');
+  const servidorUrl = cfg('servidor_url');
+
+  if (!token || !servidorUrl) return;
+
+  const caixa = db.prepare(`SELECT * FROM caixa_sessoes WHERE id = ?`).get(caixaId);
+  if (!caixa || caixa.status !== 'fechado') return;
+
+  const sangrias = db.prepare(`
+    SELECT usuario_id, valor, motivo, data_hora FROM sangrias WHERE caixa_sessao_id = ?
+  `).all(caixaId);
+
+  const numeroPdv = cfg('numero_pdv') || '01';
+
+  // Calcula saldo esperado: abertura + dinheiro - sangrias
+  const saldoEsperado = (caixa.valor_abertura || 0)
+                       + (caixa.total_dinheiro || 0)
+                       - (caixa.total_sangrias || 0);
+
+  const payload = {
+    numero_pdv:      numeroPdv,
+    usuario_id:      caixa.usuario_id,
+    abertura_em:     caixa.abertura_em,
+    fechamento_em:   caixa.fechamento_em,
+    valor_abertura:  caixa.valor_abertura  || 0,
+    total_dinheiro:  caixa.total_dinheiro  || 0,
+    total_pix:       caixa.total_pix       || 0,
+    total_debito:    caixa.total_debito    || 0,
+    total_credito:   caixa.total_credito   || 0,
+    total_convenio:  caixa.total_convenio  || 0,
+    total_outros:    caixa.total_outros    || 0,
+    total_vendas:    caixa.total_vendas    || 0,
+    total_canceladas: caixa.total_canceladas || 0,
+    total_sangrias:  caixa.total_sangrias  || 0,
+    saldo_esperado:  saldoEsperado,
+    caixa_contado:   null,  // não temos contagem física aqui
+    diferenca:       null,
+    status:          caixa.status,
+    sangrias,
+  };
+
+  try {
+    const resp = await axios.post(
+      `${servidorUrl}/api/pdv/sync-caixa`,
+      payload,
+      {
+        params:  { token },
+        timeout: 10_000,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+
+    if (resp.data.status === 'success') {
+      logger.info(`Caixa local #${caixaId} → servidor #${resp.data.data?.id_servidor}`);
+    } else {
+      throw new Error(resp.data.message || 'Resposta inesperada.');
+    }
+  } catch (err) {
+    logger.warn(`syncCaixaUnica falhou para caixa #${caixaId}: ${err.message}`);
+    throw err;
+  }
+}
+
+module.exports = { syncVendaUnica, syncCaixaUnica };

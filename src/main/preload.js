@@ -40,4 +40,6 @@ contextBridge.exposeInMainWorld('pdv', {
   // ── Sistema ────────────────────────────────────────────────────────────────
   sistemaStatus:    ()  => ipcRenderer.invoke('sistema:status'),
   cargaInicial:     ()  => ipcRenderer.invoke('sistema:cargaInicial'),
+
+  caixaSyncServidor: () => ipcRenderer.invoke('caixa:syncServidor'),
 });
