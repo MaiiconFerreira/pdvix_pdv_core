@@ -120,7 +120,6 @@ input,button,select{font-family:var(--fui)}
 #screen-pdv{display:none;flex-direction:column;height:100vh}
 #screen-pdv.active{display:flex}
 
-/* Header */
 .pdv-header{background:var(--surf);border-bottom:1.5px solid var(--border);padding:0 18px;display:grid;grid-template-columns:auto 1fr auto auto auto auto;align-items:center;gap:18px;height:64px;flex-shrink:0;box-shadow:var(--sh)}
 .pdv-logo img{height:38px;object-fit:contain}
 .header-client{min-width:0}
@@ -134,7 +133,6 @@ input,button,select{font-family:var(--fui)}
 .online-badge{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600}
 .online-badge .dot{width:8px;height:8px}
 
-/* Input bar */
 .pdv-input-bar{background:var(--surf);border-bottom:1.5px solid var(--border);padding:10px 18px;display:flex;align-items:center;gap:10px;flex-shrink:0}
 .qty-wrap{display:flex;flex-direction:column;gap:3px;width:90px;flex-shrink:0}
 .qty-wrap label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--txt3)}
@@ -147,10 +145,7 @@ input,button,select{font-family:var(--fui)}
 #input-codigo:disabled{background:var(--surf2);color:var(--txt3);cursor:not-allowed}
 #input-codigo::placeholder{color:var(--txt3);font-size:15px;font-weight:400}
 
-/* Main content */
 .pdv-body{display:grid;grid-template-columns:1fr 300px;flex:1;overflow:hidden;min-height:0}
-
-/* Items table */
 .pdv-items{display:flex;flex-direction:column;overflow:hidden;padding:0}
 .items-table-wrap{flex:1;overflow-y:auto}
 table.items{width:100%;border-collapse:collapse}
@@ -169,7 +164,6 @@ td.num{text-align:right}
 .empty-cart svg{opacity:.3}
 .empty-cart p{font-size:13px}
 
-/* Right panel */
 .pdv-panel{background:var(--surf2);border-left:1.5px solid var(--border);display:flex;flex-direction:column;gap:0;overflow-y:auto}
 .panel-totals{padding:16px 14px;display:flex;flex-direction:column;gap:8px}
 .total-row{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:var(--r-sm);background:var(--surf);border:1px solid var(--border)}
@@ -186,7 +180,6 @@ td.num{text-align:right}
 .panel-actions{padding:14px;display:flex;flex-direction:column;gap:7px}
 .panel-actions-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--txt3);margin-bottom:4px}
 
-/* Footer */
 .pdv-footer{background:var(--surf);border-top:1.5px solid var(--border);padding:0 18px;display:flex;align-items:center;justify-content:space-between;height:38px;font-size:11px;color:var(--txt3);flex-shrink:0}
 .footer-left,.footer-right{display:flex;align-items:center;gap:14px}
 .footer-sep{width:1px;height:14px;background:var(--border)}
@@ -203,6 +196,7 @@ td.num{text-align:right}
 .pgto-type-btn{padding:10px 8px;border-radius:var(--r-sm);border:2px solid var(--border);background:var(--surf);color:var(--txt2);font-size:12px;font-weight:600;cursor:pointer;transition:var(--trans);text-align:center}
 .pgto-type-btn:hover{border-color:var(--pri-lt);background:var(--pri-lt)}
 .pgto-type-btn.selected{border-color:var(--pri);background:var(--pri-lt);color:var(--pri)}
+.pgto-type-btn[data-tipo="pix"].selected{border-color:#6366F1;background:#EEF2FF;color:#4338CA}
 .pgto-value-row{display:flex;gap:10px;align-items:flex-end;margin-bottom:14px}
 .pgto-value-row .field{flex:1}
 #pgto-valor{font-family:var(--fmono);font-size:22px;font-weight:700}
@@ -218,9 +212,67 @@ td.num{text-align:right}
 .pgto-info .val{font-family:var(--fmono);font-size:16px;font-weight:800;color:var(--txt);margin-top:2px}
 .pgto-info .val.pos{color:var(--grn)}
 .pgto-info .val.neg{color:var(--red)}
+/* PIX hint na modal de pagamento */
+.pix-hint{background:#EEF2FF;border:1.5px solid #C7D2FE;border-radius:var(--r-sm);padding:10px 14px;font-size:12px;color:#3730A3;margin-bottom:14px;display:none}
+.pix-hint.show{display:block}
 
 /* ═══════════════════════════════════════════════════════════
-   PRODUCT SEARCH MODAL
+   PIX OVERLAY (QR Code)
+════════════════════════════════════════════════════════════ */
+#pix-overlay{
+  position:fixed;inset:0;background:rgba(10,15,30,.92);
+  display:none;align-items:center;justify-content:center;
+  z-index:900;padding:20px;
+  backdrop-filter:blur(4px);
+}
+#pix-overlay.open{display:flex}
+.pix-card{
+  background:#fff;border-radius:20px;box-shadow:0 24px 64px rgba(0,0,0,.35);
+  width:100%;max-width:400px;overflow:hidden;animation:fadeUp .2s ease both;
+}
+.pix-card-header{
+  background:linear-gradient(135deg,#6366F1,#4338CA);
+  padding:20px 24px 16px;color:#fff;
+}
+.pix-card-header .title{font-size:18px;font-weight:800;margin-bottom:2px}
+.pix-card-header .subtitle{font-size:12px;opacity:.8}
+.pix-body{padding:20px 24px;}
+.pix-loading{text-align:center;padding:32px 0;color:var(--txt3)}
+.pix-loading .spinner{
+  width:40px;height:40px;border:3px solid #E0E7FF;
+  border-top-color:#6366F1;border-radius:50%;
+  animation:spin 1s linear infinite;margin:0 auto 12px;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.pix-qr-wrap{text-align:center}
+.pix-qr-wrap img{border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.12);max-width:220px;width:100%}
+.pix-copy-code{
+  background:#F1F5F9;border-radius:8px;padding:10px 14px;
+  font-family:var(--fmono);font-size:11px;color:var(--txt2);
+  word-break:break-all;margin-top:12px;cursor:pointer;
+  border:1.5px dashed var(--border2);transition:var(--trans);
+}
+.pix-copy-code:hover{border-color:#6366F1;color:#4338CA}
+.pix-valor{font-family:var(--fmono);font-size:28px;font-weight:900;color:#1E293B;margin:12px 0 4px}
+.pix-countdown{font-size:13px;color:var(--txt3);font-weight:600;margin-bottom:12px}
+.pix-countdown.urgente{color:var(--red)}
+.pix-status-badge{
+  padding:8px 14px;border-radius:20px;font-size:12px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.06em;display:inline-block;margin-bottom:14px;
+}
+.pix-status-badge.aguardando{background:#EEF2FF;color:#4338CA}
+.pix-status-badge.confirmado{background:var(--grn-lt);color:#065F46}
+.pix-status-badge.erro{background:var(--red-lt);color:var(--red)}
+.pix-footer{padding:14px 24px 20px;display:flex;gap:10px;border-top:1px solid var(--border)}
+.pix-err-box{
+  background:var(--red-lt);border:1.5px solid var(--red);
+  border-radius:var(--r-sm);padding:12px 16px;margin-bottom:14px;
+  font-size:13px;color:var(--red);font-weight:500;display:none;
+}
+.pix-err-box.show{display:block}
+
+/* ═══════════════════════════════════════════════════════════
+   OUTROS MODALS (mantidos iguais)
 ════════════════════════════════════════════════════════════ */
 #modal-busca .modal-card{max-width:580px}
 .search-results{max-height:320px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--r-sm);margin-top:12px}
@@ -232,16 +284,9 @@ td.num{text-align:right}
 .sr-preco{font-family:var(--fmono);font-weight:700;font-size:14px;color:var(--pri);text-align:right}
 .sr-unit{font-size:11px;color:var(--txt3);text-align:right}
 
-/* ═══════════════════════════════════════════════════════════
-   SUPERVISOR MODAL
-════════════════════════════════════════════════════════════ */
 #modal-supervisor .modal-card{max-width:420px}
 .sup-action-badge{display:inline-block;background:var(--amb-lt);color:#92400E;border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px}
 
-/* ═══════════════════════════════════════════════════════════
-   FECHAMENTO MODAL
-════════════════════════════════════════════════════════════ */
-/* FECHAMENTO MODAL — layout expandido */
 #modal-fechamento .modal-card{max-width:680px}
 .fechamento-header-info{display:flex;gap:10px;margin-bottom:14px}
 .fech-badge-pdv{background:var(--pri);color:#fff;border-radius:var(--r-sm);padding:6px 14px;font-size:12px;font-weight:700;letter-spacing:.06em}
@@ -271,9 +316,6 @@ td.num{text-align:right}
 .fech-diff.sobra{background:var(--amb-lt);color:#92400E;border:1.5px solid var(--amb)}
 .fech-diff.zerado{background:var(--grn-lt);color:#065F46;border:1.5px solid var(--grn)}
 
-/* ═══════════════════════════════════════════════════════════
-   ALERT / TOAST
-════════════════════════════════════════════════════════════ */
 #toast-area{position:fixed;top:18px;right:18px;z-index:999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
 .toast{background:var(--surf);border-radius:var(--r);box-shadow:var(--sh-lg);padding:12px 18px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:10px;min-width:240px;max-width:340px;animation:toastIn .2s ease;border-left:4px solid var(--txt3)}
 .toast.ok{border-left-color:var(--grn);color:var(--grn)}
@@ -285,14 +327,11 @@ td.num{text-align:right}
 </head>
 <body>
 
-<!-- ──────────────────────────────────────────────────────────
-     TOAST AREA
-─────────────────────────────────────────────────────────── -->
 <div id="toast-area"></div>
 
-<!-- ──────────────────────────────────────────────────────────
+<!-- ═══════════════════════════════════
      SCREEN: LOGIN
-─────────────────────────────────────────────────────────── -->
+════════════════════════════════════ -->
 <div id="screen-login" class="screen">
   <div class="login-card">
     <div class="login-logo">
@@ -318,11 +357,10 @@ td.num{text-align:right}
   </div>
 </div>
 
-<!-- ──────────────────────────────────────────────────────────
+<!-- ═══════════════════════════════════
      SCREEN: PDV
-─────────────────────────────────────────────────────────── -->
+════════════════════════════════════ -->
 <div id="screen-pdv" class="screen">
-  <!-- Header -->
   <header class="pdv-header">
     <div class="pdv-logo"><img src="logo.png" alt="PDV" onerror="this.style.display='none'"></div>
     <div class="header-client">
@@ -340,7 +378,6 @@ td.num{text-align:right}
     </div>
   </header>
 
-  <!-- Input bar -->
   <div class="pdv-input-bar">
     <div class="qty-wrap">
       <label>QTD</label>
@@ -355,9 +392,7 @@ td.num{text-align:right}
     </button>
   </div>
 
-  <!-- Body -->
   <div class="pdv-body">
-    <!-- Items table -->
     <div class="pdv-items">
       <div class="items-table-wrap" id="items-table-wrap">
         <table class="items">
@@ -380,7 +415,6 @@ td.num{text-align:right}
       </div>
     </div>
 
-    <!-- Right panel -->
     <aside class="pdv-panel">
       <div class="panel-totals">
         <div class="total-row">
@@ -417,24 +451,25 @@ td.num{text-align:right}
     </aside>
   </div>
 
-  <!-- Footer -->
   <footer class="pdv-footer">
     <div class="footer-left">
-      <span>PDVix v<span id="ftr-versao">2.0.0</span></span>
+      <span>PDVix v<span id="ftr-versao">3.0.0</span></span>
       <span class="footer-sep"></span>
       <span>PDV <span id="ftr-pdv">01</span></span>
       <span class="footer-sep"></span>
       <span id="footer-clock">00:00:00</span>
     </div>
     <div class="footer-right">
+      <span id="ftr-ws-status" title="WebSocket" style="font-size:10px;color:var(--txt3)">⚫ WS</span>
+      <span class="footer-sep"></span>
       <span id="ftr-vendaid" style="font-family:var(--fmono);color:var(--txt3)"></span>
     </div>
   </footer>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════
+<!-- ═════════════════════════════════════════════════════════
      MODAL: ABERTURA DE CAIXA
-═══════════════════════════════════════════════════════════ -->
+══════════════════════════════════════════════════════════ -->
 <div class="overlay" id="modal-abertura">
   <div class="modal-card" style="max-width:380px">
     <div class="modal-header">
@@ -452,9 +487,9 @@ td.num{text-align:right}
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════
+<!-- ═════════════════════════════════════════════════════════
      MODAL: SUPERVISOR
-═══════════════════════════════════════════════════════════ -->
+══════════════════════════════════════════════════════════ -->
 <div class="overlay" id="modal-supervisor">
   <div class="modal-card" style="max-width:420px">
     <div class="modal-header">
@@ -485,9 +520,9 @@ td.num{text-align:right}
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════
+<!-- ═════════════════════════════════════════════════════════
      MODAL: PAGAMENTO
-═══════════════════════════════════════════════════════════ -->
+══════════════════════════════════════════════════════════ -->
 <div class="overlay" id="modal-pagamento">
   <div class="modal-card" style="max-width:540px">
     <div class="modal-header">
@@ -497,6 +532,10 @@ td.num{text-align:right}
       <div class="pgto-summary">
         <div><div class="lbl">Total a Pagar</div><div class="val" id="pgto-total-display">R$ 0,00</div></div>
         <div style="text-align:right"><div class="lbl">Nº Venda</div><div class="val" style="font-size:14px" id="pgto-num-display">—</div></div>
+      </div>
+      <!-- PIX hint shown when PIX is selected -->
+      <div class="pix-hint" id="pix-hint">
+        📱 <strong>Pagamento PIX via Pagar.me</strong> — Ao confirmar, será gerado um QR Code para o cliente escanear. O pagamento será registrado automaticamente após confirmação bancária.
       </div>
       <div class="pgto-types">
         <button class="pgto-type-btn selected" data-tipo="dinheiro">💵 Dinheiro</button>
@@ -526,9 +565,40 @@ td.num{text-align:right}
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════
+<!-- ═════════════════════════════════════════════════════════
+     PIX OVERLAY — QR Code
+══════════════════════════════════════════════════════════ -->
+<div id="pix-overlay">
+  <div class="pix-card">
+    <div class="pix-card-header">
+      <div class="title">📱 Pagamento PIX</div>
+      <div class="subtitle" id="pix-header-subtitle">Aguardando geração do QR Code…</div>
+    </div>
+    <div class="pix-body">
+      <!-- Estado: carregando -->
+      <div class="pix-loading" id="pix-loading">
+        <div class="spinner"></div>
+        <div id="pix-loading-msg">Conectando à Pagar.me…</div>
+      </div>
+      <!-- Estado: QR Code -->
+      <div id="pix-qr-section" style="display:none">
+        <div class="pix-qr-wrap" id="pix-qr-wrap"></div>
+        <div class="pix-valor" id="pix-valor-display"></div>
+        <div class="pix-status-badge aguardando" id="pix-status-badge">Aguardando pagamento</div>
+        <div class="pix-countdown" id="pix-countdown"></div>
+      </div>
+      <!-- Caixa de erro -->
+      <div class="pix-err-box" id="pix-err-box"></div>
+    </div>
+    <div class="pix-footer">
+      <button class="btn btn-ghost btn-full" id="btn-pix-cancelar">✕ Cancelar PIX</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═════════════════════════════════════════════════════════
      MODAL: CPF
-═══════════════════════════════════════════════════════════ -->
+══════════════════════════════════════════════════════════ -->
 <div class="overlay" id="modal-cpf">
   <div class="modal-card" style="max-width:380px">
     <div class="modal-header">
@@ -552,9 +622,9 @@ td.num{text-align:right}
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════
+<!-- ═════════════════════════════════════════════════════════
      MODAL: BUSCA PRODUTO (F8)
-═══════════════════════════════════════════════════════════ -->
+══════════════════════════════════════════════════════════ -->
 <div class="overlay" id="modal-busca">
   <div class="modal-card" style="max-width:580px">
     <div class="modal-header">
@@ -572,9 +642,9 @@ td.num{text-align:right}
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════
-     MODAL: PESO (produtos G/KG)
-═══════════════════════════════════════════════════════════ -->
+<!-- ═════════════════════════════════════════════════════════
+     MODAL: PESO
+══════════════════════════════════════════════════════════ -->
 <div class="overlay" id="modal-peso">
   <div class="modal-card" style="max-width:360px">
     <div class="modal-header">
@@ -593,9 +663,9 @@ td.num{text-align:right}
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════
+<!-- ═════════════════════════════════════════════════════════
      MODAL: DESCONTO
-═══════════════════════════════════════════════════════════ -->
+══════════════════════════════════════════════════════════ -->
 <div class="overlay" id="modal-desconto">
   <div class="modal-card" style="max-width:340px">
     <div class="modal-header">
@@ -614,9 +684,9 @@ td.num{text-align:right}
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════
+<!-- ═════════════════════════════════════════════════════════
      MODAL: SANGRIA
-═══════════════════════════════════════════════════════════ -->
+══════════════════════════════════════════════════════════ -->
 <div class="overlay" id="modal-sangria">
   <div class="modal-card" style="max-width:380px">
     <div class="modal-header">
@@ -634,9 +704,9 @@ td.num{text-align:right}
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════
+<!-- ═════════════════════════════════════════════════════════
      MODAL: FECHAMENTO
-═══════════════════════════════════════════════════════════ -->
+══════════════════════════════════════════════════════════ -->
 <div class="overlay" id="modal-fechamento">
   <div class="modal-card" style="max-width:680px">
     <div class="modal-header">
@@ -663,11 +733,13 @@ td.num{text-align:right}
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════
-     JS
-═══════════════════════════════════════════════════════════ -->
+<!-- ═════════════════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════════════════ -->
 <script>
-/* ─── Formatting helpers ──────────────────────────────────── */
+'use strict';
+
+/* ── Formatting helpers ──────────────────────────────────── */
 const BRL = (v) => new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL' }).format(v || 0);
 const fQtd = (q, ub) => {
   if (ub === 'G') return q >= 1000 ? (q/1000).toFixed(3).replace(/\.?0+$/,'') + ' kg' : q + ' g';
@@ -682,9 +754,19 @@ const cpfMask = (s) => {
   return s.slice(0,3)+'.'+s.slice(3,6)+'.'+s.slice(6,9)+'-'+s.slice(9);
 };
 
-/* ─── Toast ───────────────────────────────────────────────── */
+/* ── Logger prefixado ────────────────────────────────────── */
+const LOG = {
+  info:  (...a) => console.log( '[PDV]', ...a),
+  warn:  (...a) => console.warn('[PDV]', ...a),
+  err:   (...a) => console.error('[PDV]', ...a),
+  pix:   (...a) => console.log( '[PDV][PIX]', ...a),
+  pixErr:(...a) => console.error('[PDV][PIX]', ...a),
+};
+
+/* ── Toast ───────────────────────────────────────────────── */
 const toastArea = document.getElementById('toast-area');
 function toast(msg, type='info', ms=2800) {
+  LOG.info(`toast(${type}): ${msg}`);
   const el = document.createElement('div');
   el.className = `toast ${type}`;
   el.textContent = msg;
@@ -692,12 +774,14 @@ function toast(msg, type='info', ms=2800) {
   setTimeout(() => el.remove(), ms);
 }
 
-/* ─── Modal helpers ───────────────────────────────────────── */
-function openModal(id) { document.getElementById(id).classList.add('open'); }
+/* ── Modal helpers ───────────────────────────────────────── */
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => closeModal(b.dataset.close)));
+document.querySelectorAll('[data-close]').forEach(b =>
+  b.addEventListener('click', () => closeModal(b.dataset.close))
+);
 
-/* ─── Tabs ────────────────────────────────────────────────── */
+/* ── Tabs ────────────────────────────────────────────────── */
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     const parent = btn.closest('.modal-body, .modal-card');
@@ -708,42 +792,38 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   });
 });
 
-/* ─── Screen routing ─────────────────────────────────────── */
+/* ── Screen routing ─────────────────────────────────────── */
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
+  LOG.info('showScreen:', id);
 }
 
 /* ══════════════════════════════════════════════════════════
    APPLICATION STATE
 ═══════════════════════════════════════════════════════════ */
 const S = {
-  usuario:      null,
-  caixaId:      null,
-  sysInfo:      { online: false, versao: '2.0.0', numero_pdv: '01' },
-  // PDV
-  vendaId:      null,
-  numeroVenda:  null,
-  vendaAberta:  false,
-  itens:        [],
-  desconto:     0,
-  acrescimo:    0,
-  clienteId:    null,
-  clienteCpf:   '',
-  clienteNome:  'CONSUMIDOR FINAL',
-  selectedIdx:  -1,
-  // Payment
-  pgtoFeitos:       [],
-  primeiroPagemento:false,
-  // Supervisor callback
-  supCallback:  null,
-  supAcao:      null,
-  // Busca
-  buscaResultados: [],
-  buscaSelected:   -1,
-  // Peso
-  pesoCallback: null,
-  pesoProduto:  null,
+  usuario: null, caixaId: null,
+  sysInfo: { online: false, versao: '3.0.0', numero_pdv: '01' },
+  vendaId: null, numeroVenda: null, vendaAberta: false,
+  itens: [], desconto: 0, acrescimo: 0,
+  clienteId: null, clienteCpf: '', clienteNome: 'CONSUMIDOR FINAL',
+  selectedIdx: -1,
+  pgtoFeitos: [], primeiroPagemento: false,
+  supCallback: null, supAcao: null,
+  buscaResultados: [], buscaSelected: -1,
+  pesoCallback: null, pesoProduto: null,
+};
+
+/* ── PIX state (separado para clareza) ──────────────────── */
+const PIX = {
+  ativo:      false,
+  orderId:    null,
+  valor:      0,
+  timer:      null,   // countdown interval
+  pollTimer:  null,   // polling interval
+  // Previne múltiplas chamadas simultâneas
+  confirmado: false,
 };
 
 /* ══════════════════════════════════════════════════════════
@@ -770,13 +850,16 @@ const D = {
    INIT
 ═══════════════════════════════════════════════════════════ */
 async function init() {
+  LOG.info('=== PDVix iniciando ===');
   S.sysInfo = await window.pdv.sistemaStatus();
+  LOG.info('sistemaStatus:', JSON.stringify(S.sysInfo));
   updateOnlineIndicator();
   setInterval(async () => { S.sysInfo = await window.pdv.sistemaStatus(); updateOnlineIndicator(); }, 15000);
   startClock();
 
   const usr = await window.pdv.usuarioAtual();
   if (usr) {
+    LOG.info('Usuário já logado:', usr.login);
     S.usuario = usr;
     await checkCaixa();
   } else {
@@ -784,18 +867,82 @@ async function init() {
     document.getElementById('login-login').focus();
   }
 
-  // Update login online dot
   const dot = document.getElementById('login-dot');
   const txt = document.getElementById('login-online-txt');
   dot.className = 'dot ' + (S.sysInfo.online ? 'online' : 'offline');
   txt.textContent = S.sysInfo.online ? 'Conectado ao servidor' : 'Modo offline';
   document.getElementById('ftr-versao').textContent = S.sysInfo.versao;
   document.getElementById('ftr-pdv').textContent    = S.sysInfo.numero_pdv;
+
+  // WebSocket status
+  window.pdv.onWsStatus(wsStatus => {
+    LOG.info('WS status:', JSON.stringify(wsStatus));
+    const el = document.getElementById('ftr-ws-status');
+    if (!el) return;
+    if (wsStatus.autenticado) {
+      el.textContent = '🟢 WS'; el.style.color = 'var(--grn)';
+    } else if (wsStatus.conectado) {
+      el.textContent = '🟡 WS'; el.style.color = '#f6c90e';
+    } else {
+      el.textContent = '⚫ WS'; el.style.color = 'var(--txt3)';
+    }
+  });
+
+  // ── PIX: confirmação via WebSocket ───────────────────────────────────────
+  // Este listener recebe eventos do processo principal quando o webhook do
+  // Pagar.me notifica que o pagamento foi confirmado/cancelado.
+  window.pdv.onPagarme((tipo, payload) => {
+    LOG.pix('onPagarme evento recebido:', tipo, JSON.stringify(payload));
+
+    if (tipo === 'confirmado') {
+      LOG.pix('Pagamento confirmado via WS! order_id:', payload?.order_id || payload?.order_id);
+      // Verifica se o PIX ativo é deste pedido
+      if (PIX.ativo && !PIX.confirmado) {
+        const wsOrderId = payload?.order_id || '';
+        if (!wsOrderId || wsOrderId === PIX.orderId) {
+          LOG.pix('Confirmação WS matched! Finalizando venda...');
+          _onPixConfirmado(wsOrderId || PIX.orderId);
+        } else {
+          LOG.pix('WS order_id', wsOrderId, 'não bate com PIX ativo', PIX.orderId, '— ignorando');
+        }
+      }
+    } else if (tipo === 'cancelado') {
+      LOG.pix('PIX cancelado via WS');
+      if (PIX.ativo) {
+        _pixLimparTimers();
+        _pixSetStatus('erro', 'PIX cancelado pelo servidor.');
+        PIX.ativo = false;
+        PIX.orderId = null;
+      }
+    } else if (tipo === 'pendente') {
+      // QR Code entregue via WS (alternativo ao retorno direto da API)
+      LOG.pix('Payload PIX pendente via WS:', JSON.stringify(payload));
+    }
+  });
+
+  // Comandos remotos
+  window.pdv.onComandoRemoto((tipo, payload) => {
+    LOG.info('Comando remoto recebido:', tipo, JSON.stringify(payload));
+    if (tipo === 'cancelar_venda') {
+      toast('⚡ Comando remoto: cancelar venda #' + (payload?.venda_id || ''), 'warn', 5000);
+    } else if (tipo === 'fechar_caixa') {
+      toast('⚡ Comando remoto: fechar caixa.', 'warn', 5000);
+    } else if (tipo === 'enviar_comanda') {
+      toast('📋 Comanda recebida!', 'ok', 3000);
+    }
+  });
+
+  window.pdv.onCargaAtualizada(totais => {
+    LOG.info('Carga atualizada:', JSON.stringify(totais));
+    toast(`🔄 Carga: ${totais.produtos} produtos.`, 'ok', 3000);
+  });
+
+  LOG.info('=== PDVix inicializado ===');
 }
 
 function updateOnlineIndicator() {
   const online = S.sysInfo.online;
-  D.hdrDot.className      = 'dot ' + (online ? 'online' : 'offline');
+  D.hdrDot.className         = 'dot ' + (online ? 'online' : 'offline');
   D.hdrOnlineTxt.textContent = online ? 'Online' : 'Offline';
 }
 
@@ -807,13 +954,12 @@ function startClock() {
 
 async function checkCaixa() {
   const cs = await window.pdv.caixaStatus();
+  LOG.info('caixaStatus:', cs ? `id=${cs.id}` : 'nenhum');
   if (cs) {
     S.caixaId = cs.id;
     showPDV();
   } else {
     showScreen('screen-pdv');
-    document.getElementById('screen-pdv').classList.add('active');
-    // hide screen-login if needed
     document.getElementById('screen-login').classList.remove('active');
     openModal('modal-abertura');
     setTimeout(() => document.getElementById('abertura-valor').focus(), 100);
@@ -838,16 +984,16 @@ document.getElementById('login-login').addEventListener('keydown', e => { if (e.
 async function doLogin() {
   const login = document.getElementById('login-login').value.trim();
   const senha = document.getElementById('login-senha').value;
-  const errEl = document.getElementById('login-err');
-  errEl.style.display = 'none';
-
+  document.getElementById('login-err').style.display = 'none';
   if (!login || !senha) { showLoginErr('Preencha login e senha.'); return; }
 
   const btn = document.getElementById('btn-login');
   btn.disabled = true; btn.textContent = 'Aguarde…';
+  LOG.info('Login attempt:', login);
 
   const r = await window.pdv.login({ login, senha });
   btn.disabled = false; btn.textContent = 'Entrar';
+  LOG.info('Login result:', r?.sucesso, r?.mensagem || '');
 
   if (r.sucesso) {
     S.usuario = r.usuario;
@@ -869,12 +1015,13 @@ function showLoginErr(msg) {
 ═══════════════════════════════════════════════════════════ */
 document.getElementById('btn-confirmar-abertura').addEventListener('click', async () => {
   const v = parseMoney(document.getElementById('abertura-valor').value);
+  LOG.info('Abrindo caixa com valor:', v);
   const r = await window.pdv.caixaAbrir({ valor_abertura: v });
   if (r.sucesso) {
     S.caixaId = r.id;
     closeModal('modal-abertura');
     showPDV();
-    toast('Caixa aberto com sucesso!', 'ok');
+    toast('Caixa aberto!', 'ok');
   } else {
     toast(r.mensagem, 'err');
   }
@@ -887,20 +1034,13 @@ document.getElementById('abertura-valor').addEventListener('keydown', e => {
    PDV — ESTADO
 ═══════════════════════════════════════════════════════════ */
 function abrirVenda() {
-  if (S.vendaAberta) return;
-  // Will create venda on server/local when finalizing, not now
-  S.vendaAberta   = true;
-  S.itens         = [];
-  S.desconto      = 0;
-  S.acrescimo     = 0;
-  S.clienteId     = null;
-  S.clienteCpf    = '';
-  S.clienteNome   = 'CONSUMIDOR FINAL';
-  S.selectedIdx   = -1;
-  S.pgtoFeitos    = [];
-  S.primeiroPagemento = false;
-  S.vendaId       = null;
-  S.numeroVenda   = null;
+  if (S.vendaAberta) { LOG.info('Venda já aberta, ignorando F3'); return; }
+  LOG.info('Abrindo nova venda (F3)');
+  S.vendaAberta = true;
+  S.itens = []; S.desconto = 0; S.acrescimo = 0;
+  S.clienteId = null; S.clienteCpf = ''; S.clienteNome = 'CONSUMIDOR FINAL';
+  S.selectedIdx = -1; S.pgtoFeitos = []; S.primeiroPagemento = false;
+  S.vendaId = null; S.numeroVenda = null;
 
   D.inputCodigo.disabled = false;
   D.inputCodigo.placeholder = 'Bipe ou digite o código…';
@@ -909,10 +1049,7 @@ function abrirVenda() {
   D.hdrCliente.textContent  = 'CONSUMIDOR FINAL';
   D.ftrVendaId.textContent  = '';
 
-  renderItens();
-  updateTotals();
-  clearInputs();
-  focusCodigo();
+  renderItens(); updateTotals(); clearInputs(); focusCodigo();
 }
 
 async function finalizarVenda() {
@@ -920,7 +1057,7 @@ async function finalizarVenda() {
     toast('Adicione itens à venda antes de finalizar.', 'warn');
     return;
   }
-  // Open payment modal
+  LOG.info('Abrindo modal de pagamento. itens:', S.itens.length, 'total:', calcTotals().total);
   abrirModalPagamento();
 }
 
@@ -942,24 +1079,24 @@ async function cancelarVenda() {
 }
 
 function resetVenda() {
+  LOG.info('Resetando venda. vendaId anterior:', S.vendaId);
   S.vendaAberta = false;
   S.itens = []; S.desconto = 0; S.acrescimo = 0;
   S.clienteNome = 'CONSUMIDOR FINAL'; S.clienteCpf = ''; S.clienteId = null;
   S.selectedIdx = -1; S.vendaId = null; S.pgtoFeitos = [];
   S.primeiroPagemento = false;
 
-  D.inputCodigo.disabled  = true;
+  D.inputCodigo.disabled    = true;
   D.inputCodigo.placeholder = 'Aguardando… (F3 para abrir venda)';
-  D.inputCodigo.value     = '';
-  D.inputQtd.value        = '';
-  D.hdrStatus.textContent = 'CAIXA LIVRE';
-  D.hdrStatus.className   = 'status-chip livre';
-  D.hdrCliente.textContent = 'CONSUMIDOR FINAL';
+  D.inputCodigo.value       = '';
+  D.inputQtd.value          = '';
+  D.hdrStatus.textContent   = 'CAIXA LIVRE';
+  D.hdrStatus.className     = 'status-chip livre';
+  D.hdrCliente.textContent  = 'CONSUMIDOR FINAL';
   D.hdrLastItem.textContent = '—';
-  D.ftrVendaId.textContent = '';
+  D.ftrVendaId.textContent  = '';
 
-  renderItens();
-  updateTotals();
+  renderItens(); updateTotals();
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -968,15 +1105,22 @@ function resetVenda() {
 async function adicionarPorCodigo(codigo) {
   if (!S.vendaAberta) { toast('Pressione F3 para abrir uma venda.', 'warn'); return; }
 
+  LOG.info('Buscando produto:', codigo);
   const r = await window.pdv.buscarCodigo({ termo: codigo });
-  if (!r.encontrado) { toast('Produto não encontrado: ' + codigo, 'err'); return; }
+
+  if (!r.encontrado) {
+    toast('Produto não encontrado: ' + codigo, 'err');
+    LOG.warn('Produto não encontrado:', codigo);
+    return;
+  }
 
   const p = r.produto;
+  LOG.info('Produto encontrado:', p.nome, 'origem:', r.origem);
+
   if (p.bloqueado) { toast('Produto bloqueado.', 'err'); return; }
 
   const qtdStr = D.inputQtd.value.trim();
 
-  // Weight product
   if (p.unidade_base === 'G') {
     const tipoEmb = p.tipo_embalagem;
     if (qtdStr) {
@@ -984,66 +1128,47 @@ async function adicionarPorCodigo(codigo) {
       const gramas = tipoEmb === 'KG' ? Math.round(qtdNum * 1000) : Math.round(qtdNum);
       adicionarItemPeso(p, gramas, tipoEmb, codigo);
     } else {
-      // Ask weight
       S.pesoCallback = (gramas) => adicionarItemPeso(p, gramas, tipoEmb, codigo);
       S.pesoProduto  = p;
       abrirModalPeso(p, tipoEmb);
       return;
     }
   } else {
-    // UN / CX
-    const qtdNum  = parseMoney(qtdStr) || 1;
-    const tipoEmb = p.tipo_embalagem;
+    const qtdNum   = parseMoney(qtdStr) || 1;
+    const tipoEmb  = p.tipo_embalagem;
     const qtdFinal = tipoEmb === 'CX' ? Math.round(qtdNum * p.fator_embalagem) : Math.round(qtdNum);
     adicionarItemUN(p, qtdFinal, tipoEmb, codigo);
   }
 
-  clearInputs();
-  focusCodigo();
+  clearInputs(); focusCodigo();
 }
 
 function adicionarItemUN(p, quantidade, tipoEmb, codigo) {
   const preco = parseFloat(p.preco_embalagem || p.preco_venda);
-  _addToCart({
-    produto_id:          p.id,
-    produto_nome:        p.nome,
-    quantidade:          quantidade,
-    valor_unitario:      preco,
-    desconto_item:       0,
-    codigo_barras_usado: codigo,
-    unidade_origem:      tipoEmb,
-    unidade_base:        p.unidade_base,
-    fator_embalagem:     p.fator_embalagem,
-  });
+  _addToCart({ produto_id: p.id, produto_nome: p.nome, quantidade, valor_unitario: preco,
+    desconto_item: 0, codigo_barras_usado: codigo, unidade_origem: tipoEmb, unidade_base: p.unidade_base,
+    fator_embalagem: p.fator_embalagem });
 }
 
 function adicionarItemPeso(p, gramas, tipoEmb, codigo) {
   const precoPorGrama = parseFloat(p.preco_embalagem || p.preco_venda) / (tipoEmb === 'KG' ? 1000 : 1);
-  _addToCart({
-    produto_id:          p.id,
-    produto_nome:        p.nome,
-    quantidade:          gramas,
-    valor_unitario:      precoPorGrama,
-    desconto_item:       0,
-    codigo_barras_usado: codigo,
-    unidade_origem:      tipoEmb,
-    unidade_base:        'G',
-    fator_embalagem:     p.fator_embalagem,
-  });
+  _addToCart({ produto_id: p.id, produto_nome: p.nome, quantidade: gramas, valor_unitario: precoPorGrama,
+    desconto_item: 0, codigo_barras_usado: codigo, unidade_origem: tipoEmb, unidade_base: 'G',
+    fator_embalagem: p.fator_embalagem });
 }
 
 function _addToCart(item) {
-  // Check if same product+type already in cart → increment
   const existing = S.itens.findIndex(i => i.produto_id === item.produto_id && i.unidade_origem === item.unidade_origem);
   if (existing >= 0) {
+    LOG.info('Incrementando item existente:', item.produto_nome, '+', item.quantidade);
     S.itens[existing].quantidade += item.quantidade;
   } else {
+    LOG.info('Adicionando novo item:', item.produto_nome, 'x', item.quantidade, '@', item.valor_unitario);
     S.itens.push(item);
     S.selectedIdx = S.itens.length - 1;
   }
   D.hdrLastItem.textContent = item.produto_nome + ' · ' + fQtd(item.quantidade, item.unidade_base);
-  renderItens();
-  updateTotals();
+  renderItens(); updateTotals();
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -1052,11 +1177,7 @@ function _addToCart(item) {
 function renderItens() {
   const tbody = D.tbodyItens;
   tbody.innerHTML = '';
-
-  if (!S.itens.length) {
-    D.emptyCart.classList.remove('hidden');
-    return;
-  }
+  if (!S.itens.length) { D.emptyCart.classList.remove('hidden'); return; }
   D.emptyCart.classList.add('hidden');
 
   S.itens.forEach((item, idx) => {
@@ -1064,12 +1185,10 @@ function renderItens() {
     const tr  = document.createElement('tr');
     if (idx === S.selectedIdx) tr.className = 'selected';
     tr.dataset.idx = idx;
-
     const qDisplay = fQtd(item.quantidade, item.unidade_base);
     const vUnit    = item.unidade_base === 'G'
       ? BRL(item.valor_unitario * 1000) + '/kg'
       : BRL(item.valor_unitario);
-
     tr.innerHTML = `
       <td>${idx + 1}</td>
       <td class="item-name">${item.produto_nome}</td>
@@ -1078,18 +1197,14 @@ function renderItens() {
       <td class="item-disc num">${item.desconto_item > 0 ? '− ' + BRL(item.desconto_item) : '—'}</td>
       <td class="item-sub num">${BRL(sub)}</td>
     `;
-    tr.addEventListener('click', () => {
-      S.selectedIdx = idx;
-      renderItens();
-    });
+    tr.addEventListener('click', () => { S.selectedIdx = idx; renderItens(); });
     tbody.appendChild(tr);
-
     if (idx === S.selectedIdx) tr.scrollIntoView({ block: 'nearest' });
   });
 }
 
 function calcTotals() {
-  const sub  = S.itens.reduce((s, i) => s + (i.valor_unitario * i.quantidade) - (i.desconto_item || 0), 0);
+  const sub   = S.itens.reduce((s, i) => s + (i.valor_unitario * i.quantidade) - (i.desconto_item || 0), 0);
   const total = Math.max(0, sub - S.desconto + S.acrescimo);
   return { sub, total };
 }
@@ -1105,28 +1220,22 @@ function updateTotals() {
    SUPERVISOR
 ═══════════════════════════════════════════════════════════ */
 const ACAO_LABELS = {
-  cancelar_item:  'Cancelar Item',
-  cancelar_venda: 'Cancelar Venda',
-  desconto_item:  'Desconto no Item',
-  desconto_venda: 'Desconto na Venda',
+  cancelar_item: 'Cancelar Item', cancelar_venda: 'Cancelar Venda',
+  desconto_item: 'Desconto no Item', desconto_venda: 'Desconto na Venda',
 };
 
 function pedirSupervisor(acao, label, callback) {
-  S.supCallback = callback;
-  S.supAcao     = acao;
-
+  LOG.info('Pedindo supervisor para:', acao);
+  S.supCallback = callback; S.supAcao = acao;
   document.getElementById('sup-acao-txt').textContent = 'Ação: ' + label;
-  document.getElementById('sup-badge').textContent   = ACAO_LABELS[acao] || label;
-  document.getElementById('sup-codigo').value        = '';
-  document.getElementById('sup-login-user').value    = '';
-  document.getElementById('sup-login-pass').value    = '';
-  document.getElementById('sup-err').style.display   = 'none';
-
-  // Reset tabs
+  document.getElementById('sup-badge').textContent    = ACAO_LABELS[acao] || label;
+  document.getElementById('sup-codigo').value         = '';
+  document.getElementById('sup-login-user').value     = '';
+  document.getElementById('sup-login-pass').value     = '';
+  document.getElementById('sup-err').style.display    = 'none';
   document.querySelectorAll('#modal-supervisor .tab-btn').forEach((b,i) => b.classList.toggle('active', i===0));
   document.getElementById('sup-cartao').classList.add('active');
   document.getElementById('sup-login').classList.remove('active');
-
   openModal('modal-supervisor');
   setTimeout(() => document.getElementById('sup-codigo').focus(), 120);
 }
@@ -1134,7 +1243,6 @@ function pedirSupervisor(acao, label, callback) {
 async function confirmarSupervisor() {
   const activeTab = document.querySelector('#modal-supervisor .tab-btn.active').dataset.tab;
   let result;
-
   if (activeTab === 'sup-cartao') {
     const cod = document.getElementById('sup-codigo').value.trim();
     if (!cod) return;
@@ -1145,7 +1253,7 @@ async function confirmarSupervisor() {
     if (!login || !senha) return;
     result = await window.pdv.supervisorLogin({ login, senha, acao: S.supAcao });
   }
-
+  LOG.info('Supervisor result:', result?.valido, result?.mensagem || '');
   const errEl = document.getElementById('sup-err');
   if (result.valido) {
     closeModal('modal-supervisor');
@@ -1153,8 +1261,7 @@ async function confirmarSupervisor() {
     if (S.supCallback) S.supCallback(true, result.nome);
     S.supCallback = null;
   } else {
-    errEl.textContent = result.mensagem;
-    errEl.style.display = 'block';
+    errEl.textContent = result.mensagem; errEl.style.display = 'block';
   }
 }
 
@@ -1164,15 +1271,19 @@ document.getElementById('btn-sup-cancel').addEventListener('click', () => {
   if (S.supCallback) S.supCallback(false);
   S.supCallback = null;
 });
-document.getElementById('sup-codigo').addEventListener('keydown', e => {
-  if (e.key === 'Enter')  confirmarSupervisor();
-  if (e.key === 'Escape') { closeModal('modal-supervisor'); if (S.supCallback) S.supCallback(false); S.supCallback = null; }
+['sup-codigo'].forEach(id => {
+  document.getElementById(id).addEventListener('keydown', e => {
+    if (e.key === 'Enter')  confirmarSupervisor();
+    if (e.key === 'Escape') { closeModal('modal-supervisor'); if (S.supCallback) S.supCallback(false); S.supCallback = null; }
+  });
 });
 document.getElementById('sup-login-pass').addEventListener('keydown', e => {
   if (e.key === 'Enter')  confirmarSupervisor();
   if (e.key === 'Escape') { closeModal('modal-supervisor'); if (S.supCallback) S.supCallback(false); S.supCallback = null; }
 });
-document.getElementById('sup-login-user').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('sup-login-pass').focus(); });
+document.getElementById('sup-login-user').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('sup-login-pass').focus();
+});
 
 /* ══════════════════════════════════════════════════════════
    DESCONTO
@@ -1185,7 +1296,6 @@ function abrirModalDesconto(titulo, atual, callback) {
   openModal('modal-desconto');
   setTimeout(() => document.getElementById('desc-input').focus(), 100);
 }
-
 document.getElementById('btn-desc-ok').addEventListener('click', () => {
   const v = parseMoney(document.getElementById('desc-input').value);
   closeModal('modal-desconto');
@@ -1193,11 +1303,11 @@ document.getElementById('btn-desc-ok').addEventListener('click', () => {
   focusCodigo();
 });
 document.getElementById('btn-desc-cancel').addEventListener('click', () => {
-  closeModal('modal-desconto');
-  _descCallback = null;
-  focusCodigo();
+  closeModal('modal-desconto'); _descCallback = null; focusCodigo();
 });
-document.getElementById('desc-input').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('btn-desc-ok').click(); });
+document.getElementById('desc-input').addEventListener('keydown', e => {
+  if (e.key==='Enter') document.getElementById('btn-desc-ok').click();
+});
 
 /* ══════════════════════════════════════════════════════════
    CPF
@@ -1205,44 +1315,35 @@ document.getElementById('desc-input').addEventListener('keydown', e => { if(e.ke
 document.getElementById('cpf-input').addEventListener('input', e => {
   e.target.value = cpfMask(e.target.value);
 });
-
 document.getElementById('btn-cpf-ok').addEventListener('click', async () => {
   const cpf  = document.getElementById('cpf-input').value.replace(/\D/g,'');
   const nome = document.getElementById('cpf-nome').value.trim();
-
   let clienteNome = nome || 'CPF: ' + cpfMask(cpf);
   let clienteId   = null;
-
   if (cpf.length === 11) {
     const cli = await window.pdv.clienteBuscarCpf({ cpf });
     if (cli) { clienteNome = cli.nome; clienteId = cli.id; }
   }
-
-  S.clienteCpf  = cpf;
-  S.clienteNome = clienteNome;
-  S.clienteId   = clienteId;
+  S.clienteCpf = cpf; S.clienteNome = clienteNome; S.clienteId = clienteId;
   D.hdrCliente.textContent = clienteNome;
-
-  closeModal('modal-cpf');
-  focusCodigo();
+  closeModal('modal-cpf'); focusCodigo();
 });
-document.getElementById('cpf-input').addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('btn-cpf-ok').click(); });
+document.getElementById('cpf-input').addEventListener('keydown', e => {
+  if (e.key==='Enter') document.getElementById('btn-cpf-ok').click();
+});
 
 /* ══════════════════════════════════════════════════════════
    BUSCA (F8)
 ═══════════════════════════════════════════════════════════ */
 document.getElementById('btn-busca-prod').addEventListener('click', () => abrirBusca());
-
 function abrirBusca() {
-  S.buscaResultados = [];
-  S.buscaSelected   = -1;
+  S.buscaResultados = []; S.buscaSelected = -1;
   document.getElementById('busca-input').value = '';
   document.getElementById('busca-results').innerHTML = '';
   document.getElementById('btn-busca-add').disabled = true;
   openModal('modal-busca');
   setTimeout(() => document.getElementById('busca-input').focus(), 100);
 }
-
 let _buscaTimeout;
 document.getElementById('busca-input').addEventListener('input', async (e) => {
   clearTimeout(_buscaTimeout);
@@ -1250,26 +1351,18 @@ document.getElementById('busca-input').addEventListener('input', async (e) => {
   if (q.length < 2) { document.getElementById('busca-results').innerHTML = ''; return; }
   _buscaTimeout = setTimeout(async () => {
     const rows = await window.pdv.pesquisarProduto({ busca: q });
-    S.buscaResultados = rows;
-    S.buscaSelected   = rows.length ? 0 : -1;
+    S.buscaResultados = rows; S.buscaSelected = rows.length ? 0 : -1;
     renderBuscaResults(rows);
   }, 250);
 });
-
 function renderBuscaResults(rows) {
   const el = document.getElementById('busca-results');
   if (!rows.length) { el.innerHTML = '<div style="padding:16px;color:var(--txt3);text-align:center;font-size:13px">Nenhum produto encontrado</div>'; return; }
   el.innerHTML = rows.map((r, i) => `
     <div class="search-row ${i === S.buscaSelected ? 'selected' : ''}" data-idx="${i}">
-      <div>
-        <div class="sr-nome">${r.nome}</div>
-        <div class="sr-cod">Cód. ${r.codigo_interno_alternativo || '—'} · ${r.unidade_base}</div>
-      </div>
+      <div><div class="sr-nome">${r.nome}</div><div class="sr-cod">Cód. ${r.codigo_interno_alternativo || '—'} · ${r.unidade_base}</div></div>
       <div class="sr-unit">${r.codigos || ''}</div>
-      <div>
-        <div class="sr-preco">${BRL(r.preco_venda)}</div>
-        <div class="sr-unit">${r.unidade_base === 'G' ? '/kg' : '/un'}</div>
-      </div>
+      <div><div class="sr-preco">${BRL(r.preco_venda)}</div><div class="sr-unit">${r.unidade_base === 'G' ? '/kg' : '/un'}</div></div>
     </div>
   `).join('');
   el.querySelectorAll('.search-row').forEach(row => {
@@ -1282,26 +1375,18 @@ function renderBuscaResults(rows) {
   });
   document.getElementById('btn-busca-add').disabled = S.buscaSelected < 0;
 }
-
 document.getElementById('busca-input').addEventListener('keydown', e => {
-  if (e.key === 'ArrowDown') { S.buscaSelected = Math.min(S.buscaSelected + 1, S.buscaResultados.length - 1); renderBuscaResults(S.buscaResultados); }
-  if (e.key === 'ArrowUp')   { S.buscaSelected = Math.max(S.buscaSelected - 1, 0); renderBuscaResults(S.buscaResultados); }
+  if (e.key === 'ArrowDown') { S.buscaSelected = Math.min(S.buscaSelected+1, S.buscaResultados.length-1); renderBuscaResults(S.buscaResultados); }
+  if (e.key === 'ArrowUp')   { S.buscaSelected = Math.max(S.buscaSelected-1, 0); renderBuscaResults(S.buscaResultados); }
   if (e.key === 'Enter')     { adicionarDaBusca(); }
 });
-
 async function adicionarDaBusca() {
   if (S.buscaSelected < 0 || !S.buscaResultados[S.buscaSelected]) return;
   if (!S.vendaAberta) { toast('Abra uma venda antes (F3).', 'warn'); return; }
   const p = S.buscaResultados[S.buscaSelected];
   closeModal('modal-busca');
-
-  // Simulate buscarCodigo result
-  const cod  = String(p.codigo_interno_alternativo || p.id);
-  const r    = await window.pdv.buscarCodigo({ termo: cod });
-  if (r.encontrado) {
-    D.inputQtd.value = '';
-    await adicionarPorCodigo(cod);
-  }
+  D.inputQtd.value = '';
+  await adicionarPorCodigo(String(p.codigo_interno_alternativo || p.id));
   focusCodigo();
 }
 document.getElementById('btn-busca-add').addEventListener('click', adicionarDaBusca);
@@ -1317,7 +1402,6 @@ function abrirModalPeso(produto, tipoEmb) {
   openModal('modal-peso');
   setTimeout(() => document.getElementById('peso-input').focus(), 100);
 }
-
 document.getElementById('btn-peso-ok').addEventListener('click', () => {
   const v = parseMoney(document.getElementById('peso-input').value);
   if (v <= 0) { toast('Informe o peso.', 'warn'); return; }
@@ -1328,14 +1412,14 @@ document.getElementById('btn-peso-ok').addEventListener('click', () => {
   clearInputs(); focusCodigo();
 });
 document.getElementById('btn-peso-cancel').addEventListener('click', () => {
-  closeModal('modal-peso');
-  S.pesoCallback = null;
-  clearInputs(); focusCodigo();
+  closeModal('modal-peso'); S.pesoCallback = null; clearInputs(); focusCodigo();
 });
-document.getElementById('peso-input').addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('btn-peso-ok').click(); });
+document.getElementById('peso-input').addEventListener('keydown', e => {
+  if (e.key==='Enter') document.getElementById('btn-peso-ok').click();
+});
 
 /* ══════════════════════════════════════════════════════════
-   PAGAMENTO
+   PAGAMENTO — MODAL
 ═══════════════════════════════════════════════════════════ */
 let _pgtoTipoSelecionado = 'dinheiro';
 
@@ -1343,12 +1427,14 @@ function abrirModalPagamento() {
   const { total } = calcTotals();
   S.pgtoFeitos = [];
   _pgtoTipoSelecionado = 'dinheiro';
+  LOG.info('Abrindo modal pagamento. Total:', total, 'vendaId:', S.vendaId);
 
   document.getElementById('pgto-total-display').textContent = BRL(total);
   document.getElementById('pgto-num-display').textContent   = S.numeroVenda || 'Nova';
   document.getElementById('pgto-num-venda').textContent     = S.numeroVenda || '';
   document.getElementById('pgto-valor').value               = '';
   document.getElementById('btn-pgto-cancel').disabled       = false;
+  document.getElementById('pix-hint').classList.remove('show');
 
   selectPgtoType('dinheiro');
   renderPgtoList();
@@ -1358,92 +1444,160 @@ function abrirModalPagamento() {
 
 function selectPgtoType(tipo) {
   _pgtoTipoSelecionado = tipo;
-  document.querySelectorAll('.pgto-type-btn').forEach(b => b.classList.toggle('selected', b.dataset.tipo === tipo));
+  LOG.info('Tipo pagamento selecionado:', tipo);
+  document.querySelectorAll('.pgto-type-btn').forEach(b =>
+    b.classList.toggle('selected', b.dataset.tipo === tipo)
+  );
+  // Exibe dica sobre PIX
+  const pixHint = document.getElementById('pix-hint');
+  if (tipo === 'pix') {
+    pixHint.classList.add('show');
+    // Sugere preencher o total automaticamente
+    const { total } = calcTotals();
+    const pago = S.pgtoFeitos.reduce((s, p) => s + p.valorBruto, 0);
+    const rest  = Math.max(0, total - pago);
+    if (rest > 0) {
+      document.getElementById('pgto-valor').value = rest.toFixed(2).replace('.', ',');
+    }
+  } else {
+    pixHint.classList.remove('show');
+  }
 }
-document.querySelectorAll('.pgto-type-btn').forEach(b => b.addEventListener('click', () => {
-  selectPgtoType(b.dataset.tipo);
-  document.getElementById('pgto-valor').focus();
-}));
+
+document.querySelectorAll('.pgto-type-btn').forEach(b =>
+  b.addEventListener('click', () => {
+    selectPgtoType(b.dataset.tipo);
+    document.getElementById('pgto-valor').focus();
+  })
+);
 
 document.getElementById('btn-add-pgto').addEventListener('click', adicionarPagamento);
-document.getElementById('pgto-valor').addEventListener('keydown', e => { if (e.key === 'Enter') adicionarPagamento(); });
+document.getElementById('pgto-valor').addEventListener('keydown', e => {
+  if (e.key === 'Enter') adicionarPagamento();
+});
 
 async function adicionarPagamento() {
   const v = parseMoney(document.getElementById('pgto-valor').value);
   if (v <= 0) { toast('Informe o valor.', 'warn'); return; }
 
   const { total } = calcTotals();
+  LOG.info('adicionarPagamento() tipo:', _pgtoTipoSelecionado, 'valor:', v, 'total:', total);
 
-  // Ensure venda exists locally
+  // ════════════════════════════════════════════════════
+  // PIX VIA PAGAR.ME — fluxo especial com QR Code
+  // ════════════════════════════════════════════════════
+  if (_pgtoTipoSelecionado === 'pix') {
+    LOG.pix('Iniciando fluxo PIX Pagar.me. valor:', v, 'total da venda:', total);
+
+    if (PIX.ativo) {
+      toast('Já existe um PIX em andamento. Cancele-o antes de iniciar outro.', 'warn');
+      LOG.pix('PIX já ativo, bloqueando novo fluxo');
+      return;
+    }
+
+    // Garante que a venda local existe antes de chamar a API
+    if (!S.vendaId) {
+      LOG.pix('Venda ainda não criada — criando agora...');
+      const r = await window.pdv.vendaCriar();
+      if (!r.sucesso) {
+        toast('Erro ao criar venda: ' + (r.mensagem || ''), 'err');
+        LOG.pix('Falha ao criar venda:', r.mensagem);
+        return;
+      }
+      S.vendaId     = r.venda_id;
+      S.numeroVenda = r.numero_venda;
+      document.getElementById('pgto-num-venda').textContent   = S.numeroVenda;
+      document.getElementById('pgto-num-display').textContent = S.numeroVenda;
+      D.ftrVendaId.textContent = '#' + S.numeroVenda;
+      LOG.pix('Venda criada:', S.vendaId, S.numeroVenda);
+      if (S.clienteCpf) {
+        await window.pdv.vendaAtualizar({ venda_id: S.vendaId, cliente_cpf: S.clienteCpf, cliente_nome: S.clienteNome, cliente_id: S.clienteId });
+      }
+    }
+
+    // Fecha o modal de pagamento e abre o overlay PIX
+    closeModal('modal-pagamento');
+    await iniciarFluxoPix(v);
+    return;
+  }
+
+  // ════════════════════════════════════════════════════
+  // Outros pagamentos (dinheiro, débito, crédito, etc.)
+  // ════════════════════════════════════════════════════
+
+  // Garante venda local
   if (!S.vendaId) {
     const r = await window.pdv.vendaCriar();
     if (!r.sucesso) { toast('Erro ao criar venda.', 'err'); return; }
-    S.vendaId     = r.venda_id;
-    S.numeroVenda = r.numero_venda;
+    S.vendaId = r.venda_id; S.numeroVenda = r.numero_venda;
     document.getElementById('pgto-num-venda').textContent   = S.numeroVenda;
     document.getElementById('pgto-num-display').textContent = S.numeroVenda;
     D.ftrVendaId.textContent = '#' + S.numeroVenda;
-
-    // Update client if set
     if (S.clienteCpf) {
       await window.pdv.vendaAtualizar({ venda_id: S.vendaId, cliente_cpf: S.clienteCpf, cliente_nome: S.clienteNome, cliente_id: S.clienteId });
     }
   }
 
-  // Register payment
-  const r = await window.pdv.pagtoRegistrar({ venda_id: S.vendaId, tipo_pagamento: _pgtoTipoSelecionado, valor: v });
+  // Valor líquido (sem troco no banco)
+  const totalJaPago = S.pgtoFeitos.reduce((s, p) => s + p.valorBruto, 0);
+  const restante    = Math.max(0, total - totalJaPago);
+  const valorLiq    = Math.min(v, restante);
+
+  LOG.info('Registrando pagamento local. tipo:', _pgtoTipoSelecionado, 'valorLiq:', valorLiq, 'valorBruto:', v);
+  const r = await window.pdv.pagtoRegistrar({
+    venda_id: S.vendaId, tipo_pagamento: _pgtoTipoSelecionado, valor: valorLiq
+  });
+
   if (!r.sucesso) { toast('Erro ao registrar pagamento.', 'err'); return; }
 
-  S.pgtoFeitos.push({ tipo_pagamento: _pgtoTipoSelecionado, valor: v, id: r.id });
+  S.pgtoFeitos.push({ tipo_pagamento: _pgtoTipoSelecionado, valor: valorLiq, valorBruto: v, id: r.id });
   S.primeiroPagemento = true;
-  document.getElementById('btn-pgto-cancel').disabled = true; // Can't cancel after first payment
-
+  document.getElementById('btn-pgto-cancel').disabled = true;
   document.getElementById('pgto-valor').value = '';
   renderPgtoList();
 
-  const totalPago = S.pgtoFeitos.reduce((s, p) => s + p.valor, 0);
+  const totalPago = S.pgtoFeitos.reduce((s, p) => s + (p.valorBruto ?? p.valor), 0);
   if (totalPago >= total) {
     document.getElementById('pgto-valor').value = BRL(totalPago - total).replace('R$','').trim();
     document.getElementById('btn-pgto-finalizar').disabled = false;
   }
-
   document.getElementById('pgto-valor').focus();
 }
 
 function renderPgtoList() {
   const { total } = calcTotals();
-  const totalPago = S.pgtoFeitos.reduce((s, p) => s + p.valor, 0);
+  const totalPago = S.pgtoFeitos.reduce((s, p) => s + (p.valorBruto ?? p.valor), 0);
   const troco     = totalPago - total;
-
-  const el = document.getElementById('pgto-list');
-  const TIPO_LABEL = { dinheiro:'💵 Dinheiro', pix:'📱 PIX', pos_debito:'💳 Débito', pos_credito:'💳 Crédito', pos_pix:'📲 POS PIX', convenio:'🤝 Convênio', outros:'⚙️ Outros' };
-
-  if (!S.pgtoFeitos.length) { el.innerHTML = '<div class="pgto-list-empty">Nenhum pagamento adicionado</div>'; }
-  else {
+  const el        = document.getElementById('pgto-list');
+  const TIPO_LABEL = {
+    dinheiro:'💵 Dinheiro', pix:'📱 PIX', pos_debito:'💳 Débito',
+    pos_credito:'💳 Crédito', pos_pix:'📲 POS PIX', convenio:'🤝 Convênio', outros:'⚙️ Outros'
+  };
+  if (!S.pgtoFeitos.length) {
+    el.innerHTML = '<div class="pgto-list-empty">Nenhum pagamento adicionado</div>';
+  } else {
     el.innerHTML = S.pgtoFeitos.map(p => `
       <div class="pgto-item">
         <span class="pgto-item-type">${TIPO_LABEL[p.tipo_pagamento] || p.tipo_pagamento}</span>
-        <span class="pgto-item-val">${BRL(p.valor)}</span>
+        <span class="pgto-item-val">${BRL(p.valorBruto ?? p.valor)}</span>
       </div>
     `).join('');
   }
-
-  document.getElementById('pgto-pago').textContent  = BRL(totalPago);
+  document.getElementById('pgto-pago').textContent = BRL(totalPago);
   const trocoEl = document.getElementById('pgto-troco');
-  trocoEl.textContent  = troco >= 0 ? '🟢 Troco: ' + BRL(troco) : '🔴 Falta: ' + BRL(-troco);
-  trocoEl.className    = 'val ' + (troco >= 0 ? 'pos' : 'neg');
+  trocoEl.textContent = troco >= 0 ? '🟢 Troco: ' + BRL(troco) : '🔴 Falta: ' + BRL(-troco);
+  trocoEl.className   = 'val ' + (troco >= 0 ? 'pos' : 'neg');
   document.getElementById('btn-pgto-finalizar').disabled = totalPago < total;
 }
 
 document.getElementById('btn-pgto-finalizar').addEventListener('click', async () => {
   const { total } = calcTotals();
+  LOG.info('Finalizando venda. vendaId:', S.vendaId, 'total:', total, 'itens:', S.itens.length);
 
   const r = await window.pdv.vendaFinalizar({
-    venda_id:  S.vendaId,
-    itens:     S.itens,
-    desconto:  S.desconto,
-    acrescimo: S.acrescimo,
+    venda_id: S.vendaId, itens: S.itens, desconto: S.desconto, acrescimo: S.acrescimo,
   });
+  LOG.info('vendaFinalizar result:', r?.sucesso, r?.mensagem || '');
 
   if (!r.sucesso) { toast(r.mensagem || 'Erro ao finalizar.', 'err'); return; }
 
@@ -1451,15 +1605,323 @@ document.getElementById('btn-pgto-finalizar').addEventListener('click', async ()
   const troco     = totalPago - total;
 
   closeModal('modal-pagamento');
-  toast('✓ Venda ' + (S.numeroVenda || '') + ' finalizada! Total: ' + BRL(total) + (troco > 0 ? ' · Troco: ' + BRL(troco) : ''), 'ok', 4000);
+  toast('✓ Venda ' + (S.numeroVenda || '') + ' finalizada! ' + BRL(total) + (troco > 0 ? ' · Troco: ' + BRL(troco) : ''), 'ok', 4000);
   resetVenda();
 });
 
 document.getElementById('btn-pgto-cancel').addEventListener('click', () => {
-  if (S.primeiroPagemento) { toast('Impossível cancelar: já há pagamento registrado.', 'err'); return; }
+  if (S.primeiroPagemento) { toast('Pagamento já registrado — não é possível cancelar.', 'err'); return; }
+  LOG.info('Fechando modal pagamento sem cancelar venda');
   closeModal('modal-pagamento');
   focusCodigo();
 });
+
+/* ══════════════════════════════════════════════════════════
+   PIX — FLUXO COMPLETO COM PAGAR.ME
+═══════════════════════════════════════════════════════════ */
+
+/**
+ * Abre o overlay PIX, chama pagarmeCriarPix via IPC e renderiza o QR Code.
+ * Se der erro, exibe mensagem detalhada na tela.
+ */
+async function iniciarFluxoPix(valor) {
+  LOG.pix('=== iniciarFluxoPix() ===');
+  LOG.pix('valor:', valor, '| vendaId:', S.vendaId, '| numeroVenda:', S.numeroVenda);
+  LOG.pix('cliente:', S.clienteNome, '| cpf:', S.clienteCpf || '(vazio)');
+
+  PIX.ativo      = true;
+  PIX.confirmado = false;
+  PIX.valor      = valor;
+  PIX.orderId    = null;
+
+  // Mostra overlay em estado de carregamento
+  _pixMostrarOverlay();
+  _pixSetLoadingMsg('Conectando à Pagar.me…');
+
+  const params = {
+    venda_id:     S.vendaId,
+    valor:        valor,
+    numero_venda: S.numeroVenda || '',
+    cliente_nome: S.clienteNome !== 'CONSUMIDOR FINAL' ? S.clienteNome : '',
+    cliente_cpf:  S.clienteCpf || '',
+    cliente_email: '',
+  };
+
+  LOG.pix('Chamando window.pdv.pagarmeCriarPix com params:', JSON.stringify(params));
+
+  let res;
+  try {
+    res = await window.pdv.pagarmeCriarPix(params);
+  } catch (ipcErr) {
+    LOG.pixErr('Exceção IPC ao chamar pagarmeCriarPix:', ipcErr);
+    PIX.ativo = false;
+    _pixMostrarErro('Erro interno de comunicação (IPC): ' + (ipcErr?.message || String(ipcErr)));
+    return;
+  }
+
+  LOG.pix('Resposta pagarmeCriarPix:', JSON.stringify(res));
+
+  if (!res) {
+    LOG.pixErr('Resposta null/undefined da IPC');
+    PIX.ativo = false;
+    _pixMostrarErro('Resposta inválida — verifique o Console (Ctrl+Shift+I) para detalhes técnicos.');
+    return;
+  }
+
+  if (!res.sucesso) {
+    LOG.pixErr('sucesso=false. mensagem:', res.mensagem);
+    PIX.ativo = false;
+    _pixMostrarErro(res.mensagem || 'Erro desconhecido ao gerar PIX.');
+    return;
+  }
+
+  // ── Sucesso: renderiza QR Code ───────────────────────────────────────────
+  PIX.orderId = res.order_id;
+  LOG.pix('PIX criado com sucesso!');
+  LOG.pix('order_id:', res.order_id);
+  LOG.pix('charge_id:', res.charge_id);
+  LOG.pix('qr_code disponível:', !!res.qr_code);
+  LOG.pix('qr_code_url disponível:', !!res.qr_code_url);
+  LOG.pix('expires_in:', res.expires_in);
+  LOG.pix('status:', res.status);
+
+  _pixRenderizarQr(res);
+  _pixIniciarCountdown(res.expires_in || 600);
+  _pixIniciarPolling();
+}
+
+function _pixMostrarOverlay() {
+  document.getElementById('pix-loading').style.display    = 'block';
+  document.getElementById('pix-qr-section').style.display = 'none';
+  document.getElementById('pix-err-box').classList.remove('show');
+  document.getElementById('pix-header-subtitle').textContent = 'Aguardando geração do QR Code…';
+  document.getElementById('pix-overlay').classList.add('open');
+}
+
+function _pixSetLoadingMsg(msg) {
+  LOG.pix('loading msg:', msg);
+  document.getElementById('pix-loading-msg').textContent = msg;
+}
+
+function _pixMostrarErro(msg) {
+  LOG.pixErr('Erro PIX exibido ao operador:', msg);
+  document.getElementById('pix-loading').style.display    = 'none';
+  document.getElementById('pix-qr-section').style.display = 'none';
+  const errBox = document.getElementById('pix-err-box');
+  errBox.textContent = '⚠ ' + msg;
+  errBox.classList.add('show');
+  document.getElementById('pix-header-subtitle').textContent = 'Erro ao gerar PIX';
+  _pixSetStatus('erro', msg);
+}
+
+function _pixRenderizarQr(res) {
+  document.getElementById('pix-loading').style.display    = 'none';
+  document.getElementById('pix-qr-section').style.display = 'block';
+  document.getElementById('pix-err-box').classList.remove('show');
+  document.getElementById('pix-header-subtitle').textContent = 'Escaneie o QR Code com o app do banco';
+
+  const qrWrap = document.getElementById('pix-qr-wrap');
+  qrWrap.innerHTML = '';
+
+  if (res.qr_code_url) {
+    LOG.pix('Renderizando QR Code via URL de imagem:', res.qr_code_url);
+    const img = document.createElement('img');
+    img.src   = res.qr_code_url;
+    img.alt   = 'QR Code PIX';
+    img.style.cssText = 'max-width:220px;width:100%;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.12)';
+    img.onerror = () => {
+      LOG.pix('Falha ao carregar imagem do QR Code, exibindo código copia-e-cola');
+      _pixRenderizarCopiaCola(qrWrap, res.qr_code);
+    };
+    qrWrap.appendChild(img);
+  } else if (res.qr_code) {
+    LOG.pix('qr_code_url ausente, renderizando somente copia-e-cola');
+    _pixRenderizarCopiaCola(qrWrap, res.qr_code);
+  } else {
+    LOG.pixErr('Nem qr_code nem qr_code_url foram retornados pela API');
+    qrWrap.innerHTML = '<div style="color:var(--amb);font-size:13px;padding:16px;text-align:center">⚠ QR Code não retornado pela API.<br>Verifique as credenciais Pagar.me no servidor.</div>';
+  }
+
+  document.getElementById('pix-valor-display').textContent = BRL(res.valor || PIX.valor);
+  _pixSetStatus('aguardando', 'Aguardando pagamento');
+}
+
+function _pixRenderizarCopiaCola(container, qrCode) {
+  const div = document.createElement('div');
+  div.className = 'pix-copy-code';
+  div.title     = 'Clique para copiar';
+  div.textContent = qrCode;
+  div.addEventListener('click', () => {
+    navigator.clipboard.writeText(qrCode).then(() => {
+      toast('Código PIX copiado!', 'ok', 2000);
+      LOG.pix('Código copia-e-cola copiado pelo operador');
+    }).catch(() => LOG.pix('Falha ao copiar código'));
+  });
+  container.appendChild(div);
+}
+
+function _pixSetStatus(tipo, texto) {
+  const badge = document.getElementById('pix-status-badge');
+  badge.className = 'pix-status-badge ' + tipo;
+  badge.textContent = texto;
+}
+
+function _pixIniciarCountdown(segundos) {
+  LOG.pix('Iniciando countdown de', segundos, 'segundos');
+  let restante = segundos;
+  const el     = document.getElementById('pix-countdown');
+
+  _pixLimparTimers();
+
+  PIX.timer = setInterval(() => {
+    restante--;
+    const m = String(Math.floor(restante / 60)).padStart(2,'0');
+    const s = String(restante % 60).padStart(2,'0');
+    el.textContent = `Expira em ${m}:${s}`;
+    el.className   = restante <= 60 ? 'pix-countdown urgente' : 'pix-countdown';
+
+    if (restante <= 0) {
+      LOG.pix('PIX expirou por timeout');
+      _pixLimparTimers();
+      _pixSetStatus('erro', 'PIX expirado');
+      el.textContent = 'PIX expirado — cancele e tente novamente.';
+      PIX.ativo = false;
+    }
+  }, 1000);
+}
+
+function _pixIniciarPolling() {
+  LOG.pix('Iniciando polling de status a cada 3s. orderId:', PIX.orderId);
+
+  PIX.pollTimer = setInterval(async () => {
+    if (!PIX.ativo || !PIX.orderId || PIX.confirmado) {
+      clearInterval(PIX.pollTimer);
+      return;
+    }
+
+    let statusData;
+    try {
+      statusData = await window.pdv.pagarmeStatusPix({ order_id: PIX.orderId });
+    } catch (e) {
+      LOG.pixErr('Erro no polling de status:', e.message);
+      return;
+    }
+
+    if (!statusData) return;
+
+    LOG.pix('Poll resposta status:', statusData.status, '| order_id:', PIX.orderId);
+
+    if (statusData.status === 'paid') {
+      LOG.pix('PIX CONFIRMADO via polling!');
+      _onPixConfirmado(PIX.orderId);
+    } else if (statusData.status === 'failed' || statusData.status === 'canceled') {
+      LOG.pix('PIX recusado/cancelado via polling. status:', statusData.status);
+      _pixLimparTimers();
+      PIX.ativo = false;
+      _pixSetStatus('erro', statusData.status === 'failed' ? 'PIX recusado' : 'PIX cancelado');
+    }
+  }, 3000);
+}
+
+function _pixLimparTimers() {
+  if (PIX.timer)     { clearInterval(PIX.timer);     PIX.timer = null; }
+  if (PIX.pollTimer) { clearInterval(PIX.pollTimer); PIX.pollTimer = null; }
+}
+
+/**
+ * Chamado quando o pagamento PIX é confirmado (via polling ou WebSocket).
+ * Registra o pagamento local, finaliza a venda e fecha o overlay.
+ */
+async function _onPixConfirmado(orderId) {
+  if (PIX.confirmado) {
+    LOG.pix('_onPixConfirmado chamado mas já confirmado — ignorando duplicata');
+    return;
+  }
+  PIX.confirmado = true;
+  _pixLimparTimers();
+  PIX.ativo = false;
+
+  LOG.pix('=== _onPixConfirmado ===');
+  LOG.pix('orderId:', orderId, '| vendaId:', S.vendaId, '| valor:', PIX.valor);
+
+  _pixSetStatus('confirmado', '✓ Pagamento confirmado!');
+  document.getElementById('pix-header-subtitle').textContent = 'Finalizando venda…';
+  document.getElementById('btn-pix-cancelar').disabled = true;
+
+  // 1. Registra pagamento PIX no banco local
+  LOG.pix('Registrando pagamento PIX local...');
+  const resPagto = await window.pdv.pagtoRegistrar({
+    venda_id:           S.vendaId,
+    tipo_pagamento:     'pix',
+    valor:              PIX.valor,
+    referencia_externa: orderId,
+  });
+  LOG.pix('pagtoRegistrar result:', JSON.stringify(resPagto));
+
+  if (!resPagto?.sucesso) {
+    LOG.pixErr('Falha ao registrar pagamento PIX local:', resPagto?.mensagem);
+    toast('PIX aprovado mas erro ao registrar pagamento: ' + (resPagto?.mensagem || ''), 'err', 8000);
+    fecharPixOverlay();
+    return;
+  }
+
+  // 2. Finaliza a venda
+  LOG.pix('Finalizando venda...');
+  const resVenda = await window.pdv.vendaFinalizar({
+    venda_id:  S.vendaId,
+    itens:     S.itens,
+    desconto:  S.desconto,
+    acrescimo: S.acrescimo,
+  });
+  LOG.pix('vendaFinalizar result:', JSON.stringify(resVenda));
+
+  fecharPixOverlay();
+
+  if (!resVenda?.sucesso) {
+    LOG.pixErr('Falha ao finalizar venda após PIX:', resVenda?.mensagem);
+    toast('PIX confirmado mas erro ao finalizar venda: ' + (resVenda?.mensagem || ''), 'err', 8000);
+    return;
+  }
+
+  toast('✅ PIX confirmado! Venda ' + (S.numeroVenda || '') + ' finalizada. ' + BRL(PIX.valor), 'ok', 5000);
+  LOG.pix('=== Venda PIX finalizada com sucesso ===');
+  resetVenda();
+}
+
+function fecharPixOverlay() {
+  _pixLimparTimers();
+  document.getElementById('pix-overlay').classList.remove('open');
+  LOG.pix('Overlay PIX fechado');
+}
+
+async function cancelarPix() {
+  LOG.pix('Operador clicou em cancelar PIX. ativo:', PIX.ativo, 'orderId:', PIX.orderId);
+
+  _pixLimparTimers();
+
+  if (PIX.orderId) {
+    _pixSetLoadingMsg('Cancelando na Pagar.me…');
+    try {
+      const r = await window.pdv.pagarmeCancelarPix({ order_id: PIX.orderId });
+      LOG.pix('pagarmeCancelarPix result:', JSON.stringify(r));
+    } catch (e) {
+      LOG.pixErr('Erro ao cancelar PIX na API:', e.message);
+    }
+  }
+
+  PIX.ativo      = false;
+  PIX.confirmado = false;
+  PIX.orderId    = null;
+
+  fecharPixOverlay();
+  toast('PIX cancelado. Escolha outra forma de pagamento.', 'warn', 4000);
+
+  // Reabre modal de pagamento para o operador escolher outro método
+  LOG.pix('Reabrindo modal de pagamento após cancelamento PIX');
+  abrirModalPagamento();
+}
+
+document.getElementById('btn-pix-cancelar').addEventListener('click', cancelarPix);
 
 /* ══════════════════════════════════════════════════════════
    SANGRIA
@@ -1470,7 +1932,6 @@ document.getElementById('btn-sangria').addEventListener('click', () => {
   openModal('modal-sangria');
   setTimeout(() => document.getElementById('sangria-valor').focus(), 100);
 });
-
 document.getElementById('btn-sangria-ok').addEventListener('click', async () => {
   const v = parseMoney(document.getElementById('sangria-valor').value);
   const m = document.getElementById('sangria-motivo').value.trim();
@@ -1479,7 +1940,9 @@ document.getElementById('btn-sangria-ok').addEventListener('click', async () => 
   if (r.sucesso) { closeModal('modal-sangria'); toast('Sangria de ' + BRL(v) + ' registrada.', 'ok'); focusCodigo(); }
   else toast(r.mensagem, 'err');
 });
-document.getElementById('sangria-motivo').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('btn-sangria-ok').click(); });
+document.getElementById('sangria-motivo').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('btn-sangria-ok').click();
+});
 
 /* ══════════════════════════════════════════════════════════
    FECHAMENTO
@@ -1489,12 +1952,8 @@ let _saldoEsperado = 0;
 document.getElementById('btn-fechamento').addEventListener('click', async () => {
   if (S.vendaAberta) { toast('Finalize ou cancele a venda antes de fechar o caixa.', 'warn'); return; }
   const resumo = await window.pdv.caixaResumo();
-  if (!resumo) { toast('Erro ao obter resumo do caixa.', 'err'); return; }
+  if (!resumo) { toast('Erro ao obter resumo.', 'err'); return; }
 
-  // Saldo esperado em dinheiro fisico:
-  // total_dinheiro = TOTAL das vendas pagas em dinheiro (nao o valor bruto recebido).
-  // Ex: venda R$ 62, cliente pagou R$ 70, troco R$ 8.
-  //     total_dinheiro = R$ 62. Sangria de R$ 62 -> saldo = abertura. Sem quebra.
   _saldoEsperado = (resumo.sessao?.valor_abertura || 0)
                  + (resumo.total_dinheiro || 0)
                  - (resumo.total_sangrias || 0);
@@ -1510,16 +1969,14 @@ document.getElementById('btn-fechamento').addEventListener('click', async () => 
   }
 
   const grid = document.getElementById('fechamento-grid');
-
   const formas = [
     { label: '💵 Dinheiro', val: resumo.total_dinheiro,  cls: 'fech-dinheiro' },
-    { label: '📱 PIX',       val: resumo.total_pix,        cls: '' },
-    { label: '💳 Débito', val: resumo.total_debito,   cls: '' },
-    { label: '💳 Crédito', val: resumo.total_credito, cls: '' },
-    { label: '🤝 Convênio', val: resumo.total_convenio, cls: '' },
+    { label: '📱 PIX',      val: resumo.total_pix,        cls: '' },
+    { label: '💳 Débito',   val: resumo.total_debito,    cls: '' },
+    { label: '💳 Crédito',  val: resumo.total_credito,   cls: '' },
+    { label: '🤝 Convênio', val: resumo.total_convenio,  cls: '' },
     { label: '⚙️ Outros',   val: resumo.total_outros,    cls: '' },
   ];
-
   let html = formas.map(f => '<div class="fech-item ' + f.cls + '"><div class="lbl">' + f.label + '</div><div class="val">' + BRL(f.val) + '</div></div>').join('');
   html += '<div class="fech-separador"></div>';
   html +=
@@ -1527,52 +1984,47 @@ document.getElementById('btn-fechamento').addEventListener('click', async () => 
     '<div class="fech-item"><div class="lbl">❌ Canceladas</div><div class="val" style="color:var(--txt3)">' + resumo.total_canceladas + '</div></div>' +
     '<div class="fech-item fech-sangria"><div class="lbl">➖ Sangrias</div><div class="val">' + BRL(resumo.total_sangrias) + '</div></div>' +
     '<div class="fech-item fech-destaque"><div class="lbl">🏦 Abertura</div><div class="val">' + BRL(resumo.sessao?.valor_abertura || 0) + '</div></div>' +
-    '<div class="fech-total-row" style="grid-column:2/-1"><div class="lbl">TOTAL GERAL (vendas)</div><div class="val">' + BRL(resumo.total_geral || 0) + '</div></div>' +
-    '<div class="fech-saldo-row"><div class="lbl">💰 Saldo Esperado &nbsp;<small style="font-weight:400;opacity:.75">(abertura + dinheiro − sangrias)</small></div><div class="val">' + BRL(_saldoEsperado) + '</div></div>';
+    '<div class="fech-total-row" style="grid-column:2/-1"><div class="lbl">TOTAL GERAL</div><div class="val">' + BRL(resumo.total_geral || 0) + '</div></div>' +
+    '<div class="fech-item" style="grid-column:1/-1;background:var(--surf2);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px 14px;display:flex;justify-content:space-between"><div class="lbl" style="font-size:11px;font-weight:700;text-transform:uppercase">🎯 Não Automatizado <small style="font-weight:400;opacity:.7">(dinheiro+POS+outros)</small></div><div class="val" style="font-family:var(--fmono);font-size:15px;font-weight:700">' + BRL(resumo.total_nao_automatizado || 0) + '</div></div>' +
+    '<div class="fech-saldo-row"><div class="lbl">💵 Dinheiro Esperado &nbsp;<small style="font-weight:400;opacity:.75">(abertura + dinheiro − sangrias)</small></div><div class="val">' + BRL(_saldoEsperado) + '</div></div>';
 
   grid.innerHTML = html;
   document.getElementById('fechamento-contado').value = '';
   const diffEl = document.getElementById('fechamento-diff');
-  diffEl.style.display = 'none';
-  diffEl.className = 'fech-diff';
+  diffEl.style.display = 'none'; diffEl.className = 'fech-diff';
   openModal('modal-fechamento');
   setTimeout(() => document.getElementById('fechamento-contado').focus(), 150);
 });
 
-
-// Cálculo dinâmico de quebra/sobra conforme operador digita o valor contado
 document.getElementById('fechamento-contado').addEventListener('input', () => {
-  const raw = document.getElementById('fechamento-contado').value.trim();
+  const raw    = document.getElementById('fechamento-contado').value.trim();
   const diffEl = document.getElementById('fechamento-diff');
   if (!raw) { diffEl.style.display = 'none'; return; }
-
   const contado = parseMoney(raw);
   const diff    = contado - _saldoEsperado;
-
   diffEl.style.display = 'block';
   diffEl.className = 'fech-diff';
-
   if (Math.abs(diff) < 0.01) {
     diffEl.classList.add('zerado');
     diffEl.textContent = '✓ CAIXA ZERADO — Sem diferença';
   } else if (diff < 0) {
     diffEl.classList.add('quebra');
-    diffEl.textContent = `⚠ QUEBRA DE CAIXA: ${BRL(Math.abs(diff))} a menos que o esperado`;
+    diffEl.textContent = `⚠ QUEBRA: ${BRL(Math.abs(diff))} a menos`;
   } else {
     diffEl.classList.add('sobra');
-    diffEl.textContent = `↑ SOBRA DE CAIXA: ${BRL(diff)} a mais que o esperado`;
+    diffEl.textContent = `↑ SOBRA: ${BRL(diff)} a mais`;
   }
 });
-
 document.getElementById('fechamento-contado').addEventListener('keydown', e => {
   if (e.key === 'Enter') document.getElementById('btn-fechar-caixa').click();
 });
 
 document.getElementById('btn-fechar-caixa').addEventListener('click', async () => {
+  LOG.info('Confirmando fechamento de caixa');
   const r = await window.pdv.caixaFechar();
   if (r.sucesso) {
     closeModal('modal-fechamento');
-    toast('Caixa fechado com sucesso!', 'ok', 4000);
+    toast('Caixa fechado!', 'ok', 4000);
     await window.pdv.logout();
     S.usuario = null; S.caixaId = null;
     showScreen('screen-login');
@@ -1590,6 +2042,7 @@ document.getElementById('btn-fechar-caixa').addEventListener('click', async () =
 document.getElementById('btn-pdv-logout').addEventListener('click', async () => {
   if (S.vendaAberta) { toast('Finalize ou cancele a venda antes de sair.', 'warn'); return; }
   if (S.caixaId)     { toast('Feche o caixa antes de sair.', 'warn'); return; }
+  LOG.info('Logout do operador:', S.usuario?.login);
   await window.pdv.logout();
   S.usuario = null;
   resetVenda();
@@ -1603,39 +2056,36 @@ document.getElementById('btn-pdv-logout').addEventListener('click', async () => 
    KEYBOARD SHORTCUTS
 ═══════════════════════════════════════════════════════════ */
 document.addEventListener('keydown', (e) => {
-  // If any modal is open, only allow Escape to close (if applicable)
+  // PIX ativo: só Escape (para cancelar)
+  if (PIX.ativo) {
+    if (e.key === 'Escape') { e.preventDefault(); cancelarPix(); }
+    return;
+  }
+
   const anyOpen = document.querySelector('.overlay.open');
   if (anyOpen && anyOpen.id !== 'modal-supervisor') {
     if (e.key === 'Escape') {
-      // Modais obrigatórios — ESC não fecha
       if (anyOpen.id === 'modal-abertura') return;
-      if (anyOpen.id === 'modal-pagamento' && S.primeiroPagemento) return; // pagamento já iniciado
+      if (anyOpen.id === 'modal-pagamento' && S.primeiroPagemento) return;
       closeModal(anyOpen.id);
       focusCodigo();
       e.preventDefault();
     }
     return;
   }
-  if (anyOpen?.id === 'modal-supervisor') return; // handled separately
+  if (anyOpen?.id === 'modal-supervisor') return;
 
-  // Ignore if typing in an input (except the barcode/qty)
   const tag = e.target.tagName;
   if (tag === 'INPUT' && e.target.id !== 'input-codigo' && e.target.id !== 'input-qtd') return;
 
   switch (e.key) {
-    case 'F3':
-      e.preventDefault();
-      abrirVenda();
-      break;
-    case 'F2':
-      e.preventDefault();
-      finalizarVenda();
-      break;
+    case 'F3': e.preventDefault(); abrirVenda(); break;
+    case 'F2': e.preventDefault(); finalizarVenda(); break;
     case 'F4':
       e.preventDefault();
       if (S.vendaAberta) {
-        document.getElementById('cpf-input').value  = S.clienteCpf ? cpfMask(S.clienteCpf) : '';
-        document.getElementById('cpf-nome').value   = S.clienteNome !== 'CONSUMIDOR FINAL' ? S.clienteNome : '';
+        document.getElementById('cpf-input').value = S.clienteCpf ? cpfMask(S.clienteCpf) : '';
+        document.getElementById('cpf-nome').value  = S.clienteNome !== 'CONSUMIDOR FINAL' ? S.clienteNome : '';
         openModal('modal-cpf');
         setTimeout(() => document.getElementById('cpf-input').focus(), 100);
       }
@@ -1646,9 +2096,7 @@ document.addEventListener('keydown', (e) => {
       pedirSupervisor('desconto_venda', 'Desconto na Venda', (ok) => {
         if (!ok) { focusCodigo(); return; }
         abrirModalDesconto('Desconto na Venda (R$)', S.desconto, (v) => {
-          S.desconto = v;
-          updateTotals();
-          focusCodigo();
+          S.desconto = v; updateTotals(); focusCodigo();
         });
       });
       break;
@@ -1669,19 +2117,14 @@ document.addEventListener('keydown', (e) => {
       if (!S.vendaAberta || S.selectedIdx < 0) break;
       pedirSupervisor('cancelar_item', 'Remover Item', (ok) => {
         if (!ok) { focusCodigo(); return; }
+        LOG.info('Removendo item idx:', S.selectedIdx, '-', S.itens[S.selectedIdx]?.produto_nome);
         S.itens.splice(S.selectedIdx, 1);
         S.selectedIdx = S.itens.length > 0 ? S.itens.length - 1 : -1;
         renderItens(); updateTotals(); focusCodigo();
       });
       break;
-    case 'F10':
-      e.preventDefault();
-      cancelarVenda();
-      break;
-    case 'F8':
-      e.preventDefault();
-      abrirBusca();
-      break;
+    case 'F10': e.preventDefault(); cancelarVenda(); break;
+    case 'F8':  e.preventDefault(); abrirBusca(); break;
     case 'ArrowUp':
       if (document.activeElement === D.inputCodigo || document.activeElement === D.inputQtd) {
         e.preventDefault();
@@ -1701,46 +2144,30 @@ document.addEventListener('keydown', (e) => {
    BARCODE INPUT
 ═══════════════════════════════════════════════════════════ */
 D.inputCodigo.addEventListener('keydown', async (e) => {
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    const input = D.inputCodigo.value.trim();
-    if (!input) return;
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const input = D.inputCodigo.value.trim();
+  if (!input) return;
 
-    // ── Lançamento rápido de quantidade: "N*" ou "N*codigo" ──────────────
-    // Exemplos:
-    //   "3*"        → define qtd = 3 no campo QTD, foca código novamente
-    //   "3*7891234" → define qtd = 3 e já adiciona o produto 7891234
-    //   "10*"       → aguarda o próximo scan com quantidade 10
-    const multMatch = input.match(/^(\d+)\*(.*)$/);
-    if (multMatch) {
-      const qtd = parseInt(multMatch[1], 10);
-      const cod = multMatch[2].trim();
-      D.inputCodigo.value = '';
-
-      if (qtd <= 0 || qtd > 9999) {
-        toast('Quantidade inválida (1–9999).', 'warn');
-        focusCodigo();
-        return;
-      }
-
-      // Coloca no campo QTD para que adicionarPorCodigo use automaticamente
-      D.inputQtd.value = String(qtd);
-
-      if (cod) {
-        // "N*codigo" → adiciona diretamente
-        await adicionarPorCodigo(cod);
-      } else {
-        // "N*" sozinho → mostra feedback e aguarda próximo scan
-        toast(`Quantidade: ${qtd}× — bipie ou digite o produto`, 'info', 1800);
-        focusCodigo();
-      }
-      return;
-    }
-
-    // ── Código normal ─────────────────────────────────────────────────────
+  // Lançamento rápido: "N*codigo" ou "N*"
+  const multMatch = input.match(/^(\d+)\*(.*)$/);
+  if (multMatch) {
+    const qtd = parseInt(multMatch[1], 10);
+    const cod = multMatch[2].trim();
     D.inputCodigo.value = '';
-    await adicionarPorCodigo(input);
+    if (qtd <= 0 || qtd > 9999) { toast('Quantidade inválida (1–9999).', 'warn'); focusCodigo(); return; }
+    D.inputQtd.value = String(qtd);
+    if (cod) {
+      await adicionarPorCodigo(cod);
+    } else {
+      toast(`Quantidade: ${qtd}× — bipie o produto`, 'info', 1800);
+      focusCodigo();
+    }
+    return;
   }
+
+  D.inputCodigo.value = '';
+  await adicionarPorCodigo(input);
 });
 
 D.inputQtd.addEventListener('keydown', (e) => {
@@ -1752,10 +2179,7 @@ D.inputQtd.addEventListener('keydown', (e) => {
    HELPERS
 ═══════════════════════════════════════════════════════════ */
 function focusCodigo() {
-  // Small delay to ensure modals don't steal focus back
-  setTimeout(() => {
-    if (!D.inputCodigo.disabled) D.inputCodigo.focus();
-  }, 50);
+  setTimeout(() => { if (!D.inputCodigo.disabled) D.inputCodigo.focus(); }, 50);
 }
 
 function clearInputs() {

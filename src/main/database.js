@@ -148,6 +148,18 @@ function initSchema() {
       sincronizado        INTEGER DEFAULT 0
     );
 
+    CREATE TABLE IF NOT EXISTS cancelamentos (
+      id             INTEGER PRIMARY KEY AUTOINCREMENT,
+      tipo           TEXT    NOT NULL DEFAULT 'venda',  -- 'venda' | 'item'
+      venda_id       INTEGER NOT NULL,
+      item_id        INTEGER,
+      motivo         TEXT,
+      valor          REAL    DEFAULT 0,
+      supervisor_id  INTEGER,
+      cancelado_em   TEXT    NOT NULL DEFAULT (datetime('now')),
+      sincronizado   INTEGER DEFAULT 0
+    );
+
     -- ─── CONFIG ────────────────────────────────────────────────────────────
 
     CREATE TABLE IF NOT EXISTS config (
@@ -156,8 +168,10 @@ function initSchema() {
     );
 
     INSERT OR IGNORE INTO config VALUES ('servidor_url',          'http://localhost');
+    INSERT OR IGNORE INTO config VALUES ('ws_url',                '');
     INSERT OR IGNORE INTO config VALUES ('numero_pdv',            '01');
-    INSERT OR IGNORE INTO config VALUES ('versao',                '2.0.0');
+    INSERT OR IGNORE INTO config VALUES ('loja_id',               '1');
+    INSERT OR IGNORE INTO config VALUES ('versao',                '3.0.0');
     INSERT OR IGNORE INTO config VALUES ('ultima_sincronizacao',  '');
     INSERT OR IGNORE INTO config VALUES ('api_token',             '');
   `);
@@ -166,6 +180,9 @@ function initSchema() {
   // Seguro rodar em todo startup — silencia o erro se coluna já existe.
   const migrations = [
     `ALTER TABLE caixa_sessoes ADD COLUMN total_sangrias REAL DEFAULT 0`,
+    `ALTER TABLE vendas ADD COLUMN sincronizado INTEGER DEFAULT 0`,
+    `ALTER TABLE vendas ADD COLUMN id_servidor INTEGER`,
+    `ALTER TABLE pagamentos_venda ADD COLUMN sincronizado INTEGER DEFAULT 0`,
   ];
   for (const sql of migrations) {
     try { db.exec(sql); } catch (_) { /* coluna já existe — ignora */ }
