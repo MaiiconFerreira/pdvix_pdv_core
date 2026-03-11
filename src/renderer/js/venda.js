@@ -30,6 +30,11 @@ let estado = {
   pixOrderId:         null,
   pixTimer:           null,
   pixPollTimer:       null,
+  // Pagamento POS / InfiniteTap em andamento
+  posAtivo:           false,
+  posOrderId:         null,
+  posTipo:            null,
+  posTimer:           null,
 };
 
 const dom = {
@@ -125,7 +130,10 @@ async function adicionarProduto(codigo) {
 // ─── COMANDA — carrega itens como venda normal ────────────────────────────────
 
 async function carregarComanda(payload) {
-  const { numero, cliente_nome, itens } = payload;
+  // Normaliza estrutura: aceita tanto { numero, cliente_nome, itens }
+  // quanto { tipo, payload: { numero, cliente_nome, itens } }.
+  const dados = (payload && payload.payload) ? payload.payload : payload;
+  const { numero, cliente_nome, itens } = dados;
 
   if (!estado.vendaAberta) {
     const res = await window.pdv.vendaCriar();
@@ -296,6 +304,7 @@ function mostrarErroCritico(titulo, detalhe) {
 
 // ─── PIX — Modal QR Code ──────────────────────────────────────────────────────
 // Cria dinamicamente um overlay de PIX com QR Code e countdown.
+
 
 function criarOverlayPix() {
   let overlay = document.getElementById('pix-overlay');
@@ -575,20 +584,6 @@ async function confirmarPagamentoPix(orderId) {
 
 // ─── Listener de eventos do processo principal ────────────────────────────────
 
-// PIX confirmado via WebSocket (evento do servidor)
-window.pdv.onPagarme((tipo, data) => {
-  if (tipo === 'confirmado' && estado.pixAtivo) {
-    confirmarPagamentoPix(data.order_id || estado.pixOrderId);
-  } else if (tipo === 'cancelado' && estado.pixAtivo) {
-    clearInterval(estado.pixTimer);
-    clearInterval(estado.pixPollTimer);
-    fecharOverlayPix();
-    estado.pixAtivo   = false;
-    estado.pixOrderId = null;
-    mostrarErro('PIX cancelado pelo servidor.');
-  }
-});
-
 // Comanda recebida via WebSocket
 window.pdv.onComandoRemoto(async (tipo, data) => {
   if (tipo === 'enviar_comanda') {
@@ -608,6 +603,12 @@ document.addEventListener('keydown', async (e) => {
   // ── PIX ativo — Escape cancela ──────────────────────────────────────────────
   if (estado.pixAtivo) {
     if (e.key === 'Escape') { e.preventDefault(); cancelarPix(); }
+    return;
+  }
+
+  // ── POS/TAP ativo — Escape cancela, demais teclas bloqueadas ────────────────
+  if (estado.posAtivo) {
+    if (e.key === 'Escape') { e.preventDefault(); cancelarPOS(); }
     return;
   }
 
@@ -737,39 +738,45 @@ const TIPO_PAGAMENTO = {
   'pos_debito': 'pos_debito', 'pos_credito': 'pos_credito',
 };
 
+// ─── FUNÇÃO confirmarPagamento ────────────────────────────────────────────────
 async function confirmarPagamento(valorDigitado) {
-  const tipo = TIPO_PAGAMENTO[(valorDigitado || '').toLowerCase()] || null;
-  console.log('[PAGAMENTO] confirmarPagamento | digitado:', JSON.stringify(valorDigitado), '| tipo resolvido:', tipo);
+  const TIPO_MAP = {
+    '1': 'dinheiro', '2': 'pix',        '3': 'pos_debito',
+    '4': 'pos_credito', '5': 'convenio', '6': 'outros',
+    'dinheiro': 'dinheiro', 'pix': 'pix', 'debito': 'pos_debito',
+    'credito':  'pos_credito', 'convenio': 'convenio',
+    'pos_debito': 'pos_debito', 'pos_credito': 'pos_credito',
+  };
 
-  // Impede confirmação sem escolha explícita
-  if (!tipo) {
-    mostrarErroCritico('Forma de pagamento inválida', `Digite um número de 1 a 5 e pressione Enter.\n[1]Dinheiro  [2]PIX  [3]Débito  [4]Crédito  [5]Convênio`);
+  const tipo = TIPO_MAP[String(valorDigitado).toLowerCase()];
+  console.log('[PAGAMENTO] confirmarPagamento | digitado:', JSON.stringify(valorDigitado), '| tipo:', tipo);
+
+  if (!estado.vendaAberta || estado.itens.length === 0) {
+    mostrarErro('Sem itens na venda.');
     return;
   }
 
-  fecharModal();
-
-  // PIX: fluxo especial com Pagar.me
+  // ── PIX ────────────────────────────────────────────────────────────────────
   if (tipo === 'pix') {
-    console.log('[PAGAMENTO] Tipo PIX — chamando iniciarPagamentoPix()');
-    try {
-      await iniciarPagamentoPix();
-    } catch (err) {
-      console.error('[PAGAMENTO] iniciarPagamentoPix() lançou exceção:', err);
-      mostrarErroCritico('Erro inesperado no fluxo PIX', String(err?.message || err));
-    }
+    await iniciarPagamentoPix();
     return;
   }
 
-  // ── Débito/Crédito POS Stone — integração futura ───────────────────────────
-  if (tipo === 'pos_debito' || tipo === 'pos_credito') {
-    // TODO: Implementar fluxo POS Stone
-    // Por ora usa o fluxo manual
-    setLastItem(`ℹ ${tipo === 'pos_debito' ? 'Débito' : 'Crédito'} POS: passe o cartão na maquininha e confirme.`, '#f6c90e');
-    // Continua com registro manual
+  // ── Stone POS — débito ou crédito ──────────────────────────────────────────
+ if (tipo === 'pos_debito' || tipo === 'pos_credito') {
+    const tipoCartao = tipo === 'pos_debito' ? 'debit' : 'credit';
+    await rotearGatewayCartao(tipoCartao);
+    return;
   }
 
-  // ── Pagamentos locais (dinheiro, débito, crédito, convênio) ─────────────────
+
+  // ── Dinheiro, convênio, outros — registra diretamente ─────────────────────
+  const tiposValidos = ['dinheiro', 'convenio', 'outros'];
+  if (!tiposValidos.includes(tipo)) {
+    mostrarErro('Forma de pagamento inválida.');
+    return;
+  }
+
   const resPagto = await window.pdv.pagtoRegistrar({
     venda_id:       estado.vendaId,
     tipo_pagamento: tipo,
@@ -777,11 +784,10 @@ async function confirmarPagamento(valorDigitado) {
   });
 
   if (!resPagto?.sucesso) {
-    mostrarErro('Erro ao registrar pagamento: ' + (resPagto?.mensagem || 'Erro desconhecido'));
+    mostrarErro('Erro ao registrar pagamento: ' + (resPagto?.mensagem || ''));
     return;
   }
 
-  // Finaliza a venda
   const itensPayload = estado.itens.map(i => ({
     produto_id:          i.produto_id,
     produto_nome:        i.produto_nome,
@@ -800,14 +806,399 @@ async function confirmarPagamento(valorDigitado) {
   });
 
   if (!res?.sucesso) {
-    mostrarErro('Erro ao finalizar venda: ' + (res?.mensagem || 'Erro desconhecido'));
+    mostrarErro('Venda não finalizada: ' + (res?.mensagem || 'Erro desconhecido'));
     return;
   }
 
-  const totalFormatado = estado.total.toFixed(2);
   resetarVenda();
-  setLastItem(`✓ Venda finalizada! R$ ${totalFormatado} — ${tipo}`, '#22c55e');
+  setLastItem(`✓ Venda (${tipo}) finalizada! R$ ${estado.total.toFixed(2).replace('.', ',')}`, '#22c55e');
 }
+
+/**
+ * iniciarPagamentoTap
+ *
+ * Inicia pagamento via InfiniteTap (Tap to Pay no celular do operador).
+ * Exibe um overlay com QR Code do deeplink para o operador escanear
+ * com o celular que tem o InfinitePay instalado.
+ * A confirmação chega via WebSocket (onPagarme 'confirmado').
+ *
+ * @param {'debit'|'credit'} tipo
+ */
+async function iniciarPagamentoTap(tipo) {
+  if (!estado.vendaAberta || estado.itens.length === 0) return;
+
+  if (estado.posAtivo) {
+    mostrarErroCritico('Pagamento em andamento', 'Aguarde ou cancele o pagamento atual.');
+    return;
+  }
+
+  // Parcelas (crédito): lê config ou assume 1
+  const installments = tipo === 'credit'
+    ? parseInt((await window.pdv.configGet('tap_installments')) || '1')
+    : 1;
+
+  estado.posAtivo   = true;
+  estado.posTipo    = tipo;
+  estado.posOrderId = null;
+
+  // ── Overlay de espera ─────────────────────────────────────────────────────
+  let overlay = document.getElementById('pos-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'pos-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.88);display:flex;align-items:center;justify-content:center;z-index:9999;';
+    document.body.appendChild(overlay);
+  }
+
+  const tipoLabel = tipo === 'debit' ? 'DÉBITO' : `CRÉDITO${installments > 1 ? ' ' + installments + 'x' : ''}`;
+
+  overlay.style.display = 'flex';
+  overlay.innerHTML = `
+    <div style="background:#1a1a2e;border:2px solid #00c896;border-radius:12px;padding:32px 40px;max-width:440px;width:92%;text-align:center;color:#fff;">
+      <div style="color:#00c896;font-size:1.3rem;font-weight:700;margin-bottom:12px;">
+        📱 INFINITETAP — ${tipoLabel}
+      </div>
+      <div id="tap-status-msg" style="color:#aaa;font-size:0.9rem;margin-bottom:16px;">
+        Gerando QR Code...
+      </div>
+      <div id="tap-valor" style="color:#fff;font-size:1.6rem;font-weight:800;margin:12px 0;"></div>
+      <div id="tap-qr-container" style="margin:12px auto 16px;max-width:200px;"></div>
+      <div id="tap-instrucao" style="color:#aaa;font-size:0.85rem;margin-bottom:20px;display:none;">
+        Escaneie o QR com o celular do operador.<br>
+        <span style="color:#00c896;">Toque o cartão do cliente no celular.</span>
+      </div>
+      <button id="tap-cancelar-btn" style="
+        background:transparent;color:#ff4d4d;border:1px solid #ff4d4d;
+        padding:8px 24px;border-radius:6px;cursor:pointer;font-size:0.85rem;
+      ">Cancelar</button>
+    </div>
+  `;
+
+  document.getElementById('tap-valor').innerText = `R$ ${estado.total.toFixed(2).replace('.', ',')}`;
+  document.getElementById('tap-cancelar-btn').addEventListener('click', cancelarPOS);
+
+  // ── Solicita criação da transação ao servidor ─────────────────────────────
+  let res;
+  try {
+    res = await window.pdv.infinitetapEnviar({
+      venda_id:       estado.vendaId,
+      valor:          estado.total,
+      numero_venda:   estado.numeroVenda || '',
+      payment_method: tipo,
+      installments,
+    });
+  } catch (e) {
+    estado.posAtivo = false;
+    fecharOverlayPOS();
+    mostrarErroCritico('Erro InfiniteTap', String(e.message));
+    return;
+  }
+
+  if (!res?.sucesso) {
+    estado.posAtivo = false;
+    fecharOverlayPOS();
+    mostrarErroCritico('Erro ao iniciar InfiniteTap', res?.mensagem || 'Verifique a conexão com o servidor.');
+    return;
+  }
+
+  estado.posOrderId = res.order_id;
+
+  // ── Renderiza QR Code do deeplink ─────────────────────────────────────────
+  const qrContainer = document.getElementById('tap-qr-container');
+  const msgEl       = document.getElementById('tap-status-msg');
+  const instrucao   = document.getElementById('tap-instrucao');
+
+  try {
+    // Usa a lib QRCode se disponível (npm install qrcode ou CDN)
+    if (typeof QRCode !== 'undefined') {
+      const canvas = document.createElement('canvas');
+      qrContainer.appendChild(canvas);
+      await QRCode.toCanvas(canvas, res.deeplink_url, {
+        width: 180, margin: 1,
+        color: { dark: '#000000', light: '#ffffff' },
+      });
+    } else {
+      // Fallback sem lib: exibe a URL para copiar
+      qrContainer.innerHTML = `
+        <div style="background:#fff;color:#000;padding:8px;border-radius:4px;font-size:0.7rem;word-break:break-all;max-width:180px;margin:0 auto;">
+          ${res.deeplink_url}
+        </div>`;
+    }
+
+    if (msgEl)    { msgEl.innerText = '✓ QR gerado! Escaneie com o celular.'; msgEl.style.color = '#00c896'; }
+    if (instrucao) instrucao.style.display = 'block';
+
+  } catch (qrErr) {
+    console.warn('[TAP] Erro ao gerar QR:', qrErr.message);
+    if (msgEl) msgEl.innerText = 'Aguardando pagamento InfiniteTap...';
+  }
+
+  console.log('[TAP] order_id:', res.order_id, '| deeplink:', res.deeplink_url);
+
+  // Timeout de segurança: 3 minutos
+  estado.posTimer = setTimeout(() => {
+    if (estado.posAtivo) {
+      estado.posAtivo = false;
+      fecharOverlayPOS();
+      mostrarErro('Tempo limite InfiniteTap excedido. Tente novamente.');
+    }
+  }, 180_000);
+}
+
+
+/**
+ * rotearGatewayCartao
+ *
+ * Lê a chave `gateway_cartao` do banco local e decide qual gateway chamar.
+ * Toda a lógica de cada gateway permanece em sua própria função isolada.
+ *
+ * @param {'debit'|'credit'} tipoCartao
+ */
+async function rotearGatewayCartao(tipoCartao) {
+  // Lê configuração do banco SQLite local (mesma fonte usada por device_serial_number)
+  const gateway = (await window.pdv.configGet('gateway_cartao')) || 'pagarme_pos';
+
+  console.log(`[GATEWAY] gateway_cartao = "${gateway}" | tipo = "${tipoCartao}"`);
+
+  switch (gateway) {
+    case 'infinitetap':
+      await iniciarPagamentoTap(tipoCartao);
+      break;
+
+    case 'pagarme_pos':
+    default:
+      await iniciarPagamentoPOS(tipoCartao);
+      break;
+  }
+}
+
+// ─── iniciarPagamentoPOS ─────────────────────────────────────────────────────
+async function iniciarPagamentoPOS(tipo) {
+  if (!estado.vendaAberta || estado.itens.length === 0) return;
+
+  if (estado.posAtivo) {
+    mostrarErroCritico('POS em andamento', 'Aguarde o pagamento na maquininha ou cancele antes.');
+    return;
+  }
+
+  // Lê serial da maquininha configurado no PDV
+  const deviceSerial = await window.pdv.configGet('device_serial_number');
+  if (!deviceSerial) {
+    mostrarErroCritico(
+      'Maquininha não configurada',
+      'Acesse Configurações → insira o número serial da maquininha Stone (device_serial_number).'
+    );
+    return;
+  }
+
+  estado.posAtivo   = true;
+  estado.posTipo    = tipo;
+  estado.posOrderId = null;
+
+  // ── Overlay de espera POS ─────────────────────────────────────────────────
+  let overlay = document.getElementById('pos-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'pos-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.88);display:flex;align-items:center;justify-content:center;z-index:9999;';
+    document.body.appendChild(overlay);
+  }
+
+  const tipoLabel = tipo === 'debit' ? 'DÉBITO' : 'CRÉDITO';
+  const tipoIcon  = tipo === 'debit' ? '💳' : '💰';
+
+  overlay.style.display = 'flex';
+  overlay.innerHTML = `
+    <div style="background:#1a1a2e;border:2px solid #f6c90e;border-radius:12px;padding:32px 40px;max-width:440px;width:92%;text-align:center;color:#fff;">
+      <div style="color:#f6c90e;font-size:1.3rem;font-weight:700;margin-bottom:12px;">${tipoIcon} PAGAMENTO ${tipoLabel} — STONE POS</div>
+      <div id="pos-status-msg" style="color:#aaa;font-size:0.9rem;margin-bottom:16px;">Enviando para a maquininha...</div>
+      <div id="pos-valor" style="color:#fff;font-size:1.6rem;font-weight:800;margin:12px 0;"></div>
+      <div id="pos-device" style="color:#666;font-size:0.75rem;margin-bottom:20px;"></div>
+      <div style="color:#aaa;font-size:0.85rem;margin-bottom:20px;">
+        Aguardando pagamento na maquininha.<br>
+        <span style="color:#f6c90e;">Apresente o cartão ao cliente.</span>
+      </div>
+      <button id="pos-cancelar-btn" style="
+        background:transparent;color:#ff4d4d;border:1px solid #ff4d4d;
+        padding:8px 24px;border-radius:6px;cursor:pointer;font-size:0.85rem;
+      ">Cancelar</button>
+    </div>
+  `;
+
+  document.getElementById('pos-valor').innerText  = `R$ ${estado.total.toFixed(2).replace('.', ',')}`;
+  document.getElementById('pos-device').innerText = `Maquininha: ${deviceSerial}`;
+  document.getElementById('pos-cancelar-btn').addEventListener('click', cancelarPOS);
+
+  // ── Envia para a maquininha ───────────────────────────────────────────────
+  let res;
+  try {
+    res = await window.pdv.pagarmeEnviarPos({
+      venda_id:             estado.vendaId,
+      valor:                estado.total,
+      numero_venda:         estado.numeroVenda || '',
+      device_serial_number: deviceSerial,
+      tipo,
+      installments:         1,
+      installment_type:     'merchant',
+      display_name:         `Venda #${estado.vendaId}`,
+      print_receipt:        true,
+    });
+  } catch (e) {
+    estado.posAtivo = false;
+    fecharOverlayPOS();
+    mostrarErroCritico('Erro IPC POS', String(e.message));
+    return;
+  }
+
+  if (!res?.sucesso) {
+    estado.posAtivo = false;
+    fecharOverlayPOS();
+    mostrarErroCritico('Erro ao enviar para maquininha', res?.mensagem || 'Verifique a conexão com o servidor.');
+    return;
+  }
+
+  estado.posOrderId = res.order_id;
+
+  const msgEl = document.getElementById('pos-status-msg');
+  if (msgEl) {
+    msgEl.innerText = '✓ Pedido enviado! Aguardando pagamento na maquininha...';
+    msgEl.style.color = '#22c55e';
+  }
+
+  console.log('[POS] Pedido criado. order_id:', res.order_id, '| device:', deviceSerial);
+
+  // Timeout de segurança: 3 minutos sem confirmação cancela a espera no PDV
+  // (a cobrança na Pagar.me não é cancelada — o operador decide)
+  estado.posTimer = setTimeout(() => {
+    if (estado.posAtivo) {
+      estado.posAtivo = false;
+      fecharOverlayPOS();
+      mostrarErro('Tempo limite excedido. Verifique a maquininha e tente novamente.');
+    }
+  }, 180_000);
+}
+
+async function cancelarPOS() {
+  clearTimeout(estado.posTimer);
+
+  const msgEl = document.getElementById('pos-status-msg') || document.getElementById('tap-status-msg');
+  if (msgEl) { msgEl.innerText = 'Cancelando...'; msgEl.style.color = '#f6c90e'; }
+
+  if (estado.posOrderId) {
+    const gateway = (await window.pdv.configGet('gateway_cartao')) || 'pagarme_pos';
+
+    if (gateway === 'infinitetap') {
+      await window.pdv.infinitetapCancelar({ order_id: estado.posOrderId });
+    } else {
+      await window.pdv.pagarmeCancelarPos({ order_id: estado.posOrderId });
+    }
+  }
+
+  estado.posAtivo   = false;
+  estado.posOrderId = null;
+  fecharOverlayPOS();
+  setLastItem('Pagamento cancelado. Escolha outra forma.', '#f6c90e');
+  dom.inputCodigo.focus();
+}
+
+// ─── fecharOverlayPOS ────────────────────────────────────────────────────────
+function fecharOverlayPOS() {
+  clearTimeout(estado.posTimer);
+  const overlay = document.getElementById('pos-overlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
+// ─── confirmarPagamentoPOS ───────────────────────────────────────────────────
+async function confirmarPagamentoPOS(data) {
+  if (!estado.posAtivo) return;
+
+  clearTimeout(estado.posTimer);
+  estado.posAtivo   = false;
+  estado.posOrderId = null;
+
+  fecharOverlayPOS();
+
+  // Tipo de pagamento: usa o que veio no evento, ou o que o operador escolheu
+  const tipo = data.tipo_pagamento || (estado.posTipo === 'debit' ? 'pos_debito' : 'pos_credito');
+
+  const resPagto = await window.pdv.pagtoRegistrar({
+    venda_id:           estado.vendaId,
+    tipo_pagamento:     tipo,
+    valor:              estado.total,
+    referencia_externa: data.order_id || '',
+  });
+
+  if (!resPagto?.sucesso) {
+    mostrarErro('Pagamento aprovado na maquininha, mas falhou ao registrar: ' + (resPagto?.mensagem || ''));
+    return;
+  }
+
+  const itensPayload = estado.itens.map(i => ({
+    produto_id:          i.produto_id,
+    produto_nome:        i.produto_nome,
+    quantidade:          i.quantidade,
+    valor_unitario:      i.preco,
+    desconto_item:       i.desconto_item,
+    codigo_barras_usado: i.codigo_barras_usado,
+    unidade_origem:      i.unidade_origem,
+  }));
+
+  const res = await window.pdv.vendaFinalizar({
+    venda_id:  estado.vendaId,
+    itens:     itensPayload,
+    desconto:  estado.descontoGeral,
+    acrescimo: 0,
+  });
+
+  if (!res?.sucesso) {
+    mostrarErro('Venda não finalizada: ' + (res?.mensagem || 'Erro'));
+    return;
+  }
+
+  const tipoLabel = tipo === 'pos_debito' ? 'Débito' : tipo === 'pos_credito' ? 'Crédito' : tipo;
+  resetarVenda();
+  setLastItem(`✓ Venda ${tipoLabel} (POS) finalizada! R$ ${estado.total?.toFixed(2) || ''}`, '#22c55e');
+}
+
+// ─── Listener WebSocket: PIX + POS + InfiniteTap ─────────────────────────────
+window.pdv.onPagarme((tipo, data) => {
+  // ── PIX confirmado ────────────────────────────────────────────────────────
+  if (tipo === 'confirmado' && estado.pixAtivo) {
+    confirmarPagamentoPix(data.order_id || estado.pixOrderId);
+    return;
+  }
+
+  // ── POS / InfiniteTap confirmado ──────────────────────────────────────────
+  if (tipo === 'confirmado' && estado.posAtivo) {
+    const gatewayLabel = data.gateway === 'infinitetap' ? 'InfiniteTap' : 'Stone POS';
+    console.log(`[GATEWAY] Confirmado via ${gatewayLabel}`, data);
+    confirmarPagamentoPOS(data);
+    return;
+  }
+
+  // ── PIX cancelado ─────────────────────────────────────────────────────────
+  if (tipo === 'cancelado' && estado.pixAtivo) {
+    clearInterval(estado.pixTimer);
+    clearInterval(estado.pixPollTimer);
+    fecharOverlayPix();
+    estado.pixAtivo   = false;
+    estado.pixOrderId = null;
+    mostrarErro('PIX cancelado: ' + (data.mensagem || 'tente novamente.'));
+    return;
+  }
+
+  // ── POS / InfiniteTap cancelado ───────────────────────────────────────────
+  if (tipo === 'cancelado' && estado.posAtivo) {
+    const motivo = data.warning || data.mensagem || 'Cancelado.';
+    estado.posAtivo   = false;
+    estado.posOrderId = null;
+    clearTimeout(estado.posTimer);
+    fecharOverlayPOS();
+    mostrarErro(`Pagamento cancelado: ${motivo}`);
+    return;
+  }
+
+});
 
 // ─── INPUT DE CÓDIGO DE BARRAS ────────────────────────────────────────────────
 
@@ -847,6 +1238,7 @@ dom.inputCodigo.addEventListener('keypress', async (e) => {
 
 function resetarVenda() {
   fecharOverlayPix();
+  fecharOverlayPOS();
   estado.vendaAberta        = false;
   estado.vendaId            = null;
   estado.itens              = [];
@@ -854,6 +1246,9 @@ function resetarVenda() {
   estado.quantidadePendente = 1;
   estado.pixAtivo           = false;
   estado.pixOrderId         = null;
+  estado.posAtivo           = false;
+  estado.posOrderId         = null;
+  estado.posTimer           = null;
   dom.inputCodigo.disabled  = true;
   dom.inputCodigo.placeholder = '';
   atualizarUI();

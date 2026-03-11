@@ -200,9 +200,10 @@ async function wsExecutarComando(cmd) {
         if (mainWindow) mainWindow.webContents.send('cmd:finalizar_venda', payload);
         break;
       case 'enviar_comanda':
-        // FIX: para enviar_comanda os dados (numero, cliente_nome, itens) estão
-        // na raiz de `cmd`, não em `cmd.payload`. Enviamos `cmd` completo.
-        if (mainWindow) mainWindow.webContents.send('cmd:comanda', cmd);
+        // Normaliza estrutura: ComandaController guarda os dados em cmd.payload.
+        // Extraímos cmd.payload (se existir) para que carregarComanda() receba
+        // diretamente { numero, cliente_nome, itens } sem precisar de .payload.
+        if (mainWindow) mainWindow.webContents.send('cmd:comanda', cmd.payload ?? cmd);
         break;
       case 'enviar_carga':
         const r = await executarCargaInicial();
@@ -273,6 +274,16 @@ app.whenReady().then(async () => {
   createWindow();
   await verificarOnline();
   setInterval(verificarOnline, 30_000);
+
+  // Sync periódico de cancelamentos offline (a cada 60s)
+  // Complementa o sync imediato feito após cada cancelamento:registrar.
+  setInterval(() => {
+    if (isOnline) {
+      syncCancelamentosOffline().catch(err =>
+        logger.warn('sync cancelamento periódico falhou: ' + err.message)
+      );
+    }
+  }, 60_000);
 
   mainWindow.webContents.once('did-finish-load', async () => {
     if (isOnline) {
@@ -1165,11 +1176,19 @@ ipcMain.handle('cancelamento:registrar', (_e, { tipo, venda_id, item_id, motivo,
     }
 
     const info = db.prepare(`
-      INSERT INTO cancelamentos (tipo, venda_id, item_id, motivo, valor, supervisor_id, cancelado_em)
-      VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+      INSERT INTO cancelamentos (tipo, venda_id, item_id, motivo, valor, supervisor_id, cancelado_em, sincronizado)
+      VALUES (?, ?, ?, ?, ?, ?, datetime('now'), 0)
     `).run(tipo, venda_id, item_id || null, motivo || '', valor || 0, supervisor_id || null);
 
     logger.info(`Cancelamento: ${tipo} #${venda_id} — motivo: ${motivo}`);
+
+    // Tenta sincronizar imediatamente (fire-and-forget, não bloqueia a resposta)
+    if (isOnline) {
+      syncCancelamentosOffline().catch(err =>
+        logger.warn('sync cancelamento imediato falhou: ' + err.message)
+      );
+    }
+
     return { sucesso: true, id: info.lastInsertRowid };
   } catch (err) {
     logger.error('cancelamento:registrar: ' + err.message);
@@ -1193,6 +1212,370 @@ ipcMain.handle('cancelamento:listar', (_e, { caixa_sessao_id } = {}) => {
   `).all();
 });
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// PAGAR.ME — STONE POS (débito, crédito, PIX na maquininha)
+// Adicionar em main.js logo após os handlers de PIX existentes.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * pagarme:enviarPos
+ *
+ * Cria um pedido na Pagar.me com poi_payment_settings apontando para a
+ * maquininha Stone (device_serial_number). O pagamento é processado
+ * presencialmente na maquininha e confirmado via webhook → WebSocket.
+ *
+ * @param {object} d
+ *   venda_id              {number}   ID local da venda (SQLite)
+ *   valor                 {number}   Valor em reais (ex: 49.90)
+ *   numero_venda          {string}   Número da venda para roteamento WebSocket
+ *   device_serial_number  {string}   Serial da maquininha Stone (obrigatório)
+ *   tipo                  {string}   'debit'|'credit'|'pix'|'' (vazio=operador escolhe)
+ *   installments          {number}   Parcelas (para crédito, mínimo 1)
+ *   installment_type      {string}   'merchant'|'issuer' (padrão: merchant)
+ *   display_name          {string}   Nome exibido na maquininha (opcional)
+ *   print_receipt         {boolean}  Imprimir comprovante (padrão: true)
+ *   cliente_nome          {string}   (opcional)
+ *   cliente_cpf           {string}   (opcional)
+ *   cliente_email         {string}   (opcional)
+ *
+ * @returns {{ sucesso, order_id, status, device_serial_number, tipo, mensagem? }}
+ */
+ipcMain.handle('pagarme:enviarPos', async (_e, {
+  venda_id, valor, numero_venda,
+  device_serial_number,
+  tipo = '', installments = 1, installment_type = 'merchant',
+  display_name, print_receipt = true,
+  cliente_nome, cliente_cpf, cliente_email,
+}) => {
+  const token       = cfg('api_token');
+  const servidorUrl = cfg('servidor_url');
+  const lojaId      = parseInt(cfg('loja_id') || '1');
+  const numeroPdv   = cfg('numero_pdv') || '01';
+
+  logger.info('[POS IPC] pagarme:enviarPos CHAMADO', {
+    venda_id,
+    valor,
+    device_serial_number,
+    tipo: tipo || '(operador_escolhe)',
+  });
+
+  if (!token || !servidorUrl) {
+    return { sucesso: false, mensagem: 'Servidor não configurado. Acesse Configurações do PDV.' };
+  }
+  if (!valor || valor <= 0) {
+    return { sucesso: false, mensagem: 'Valor inválido: ' + valor };
+  }
+  if (!venda_id) {
+    return { sucesso: false, mensagem: 'venda_id não informado.' };
+  }
+  if (!device_serial_number) {
+    return { sucesso: false, mensagem: 'Número serial da maquininha não configurado.' };
+  }
+
+  const requestBody = {
+    venda_id,
+    valor,
+    loja_id:               lojaId,
+    numero_pdv:            numeroPdv,
+    numero_venda:          numero_venda          || '',
+    device_serial_number,
+    tipo,
+    installments,
+    installment_type,
+    display_name:          display_name          || `Venda #${venda_id}`,
+    print_receipt,
+    cliente_nome:          cliente_nome          || '',
+    cliente_cpf:           cliente_cpf           || '',
+    cliente_email:         cliente_email         || '',
+  };
+
+  try {
+    const resp = await axios.post(
+      `${servidorUrl}/api/pdv/pos/criar`,
+      requestBody,
+      axiosOpts({
+        params:  { token },
+        timeout: 20_000,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+    if (resp.data.status !== 'success') {
+      const msg = resp.data.message || resp.data.mensagem || 'Erro ao enviar para maquininha.';
+      logger.error('[POS IPC] Erro servidor:', msg);
+      return { sucesso: false, mensagem: msg };
+    }
+
+    const d = resp.data.data || {};
+    logger.info('[POS IPC] ✓ Pedido enviado para maquininha. order_id:', d.order_id);
+
+    // Salva mapeamento venda → PDV para o WebSocket rotear a confirmação
+    if (numero_venda) {
+      try {
+        db.prepare('INSERT OR REPLACE INTO config (chave, valor) VALUES (?, ?)')
+          .run(`venda_pdv:${numero_venda}`, `${lojaId}:${numeroPdv}`);
+      } catch (e) {
+        logger.warn('[POS IPC] Falha ao salvar mapeamento local:', e.message);
+      }
+    }
+
+    return { sucesso: true, ...d };
+
+  } catch (err) {
+    const httpStatus = err.response?.status ?? null;
+    const serverMsg  = err.response?.data?.message || err.response?.data?.mensagem || null;
+    const mensagem   = serverMsg || err.message || 'Erro de conexão.';
+
+    logger.error('[POS IPC] Exceção ao enviar para maquininha', {
+      http_status:   httpStatus,
+      mensagem,
+      device_serial: device_serial_number,
+    });
+
+    let msgAmigavel = mensagem;
+    if (!httpStatus) {
+      msgAmigavel = `Sem resposta do servidor (${err.code || 'timeout'}).`;
+    } else if (httpStatus >= 500) {
+      msgAmigavel = `Erro no servidor (HTTP ${httpStatus}): ${mensagem}`;
+    }
+
+    return { sucesso: false, mensagem: msgAmigavel };
+  }
+});
+
+/**
+ * pagarme:cancelarPos
+ * Cancela um pedido POS que ainda não foi pago na maquininha.
+ */
+ipcMain.handle('pagarme:cancelarPos', async (_e, { order_id }) => {
+  const token       = cfg('api_token');
+  const servidorUrl = cfg('servidor_url');
+
+  if (!token || !servidorUrl) return { sucesso: false, mensagem: 'Servidor não configurado.' };
+
+  try {
+    const resp = await axios.post(
+      `${servidorUrl}/api/pdv/pos/cancelar`,
+      { order_id },
+      axiosOpts({
+        params:  { token },
+        timeout: 10_000,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+    const ok = resp.data.status === 'success';
+    logger.info(`[POS IPC] cancelarPos order_id=${order_id} → ${ok ? 'cancelado' : 'falhou'}`);
+    return { sucesso: ok, mensagem: resp.data.message || resp.data.mensagem || '' };
+
+  } catch (err) {
+    logger.warn('[POS IPC] cancelarPos falhou: ' + (err.message || 'Erro'));
+    return { sucesso: false, mensagem: err.message };
+  }
+});
+
+/**
+ * pagarme:statusPos
+ * Consulta status de um pedido POS no banco do servidor.
+ */
+ipcMain.handle('pagarme:statusPos', async (_e, { order_id }) => {
+  const token       = cfg('api_token');
+  const servidorUrl = cfg('servidor_url');
+
+  if (!token || !servidorUrl) return null;
+
+  try {
+    const resp = await axios.get(
+      `${servidorUrl}/api/pdv/pos/status`,
+      axiosOpts({ params: { token, order_id }, timeout: 8_000 })
+    );
+    return resp.data.status === 'success' ? resp.data.data : null;
+  } catch {
+    return null;
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INFINITETAP — Tap to Pay via app InfinitePay no celular do operador
+//
+// Adicione este bloco ao main.js logo após os handlers pagarme:statusPos
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * infinitetap:enviar
+ *
+ * Solicita ao servidor a criação de uma transação InfiniteTap.
+ * Retorna o deeplink_url para exibir como QR Code na tela do PDV.
+ * O operador escaneia o QR com o celular → InfinitePay abre → Tap to Pay.
+ * A confirmação chega via WebSocket (evento pdv:pagamento_confirmado).
+ *
+ * @param {object} d
+ *   venda_id        {number}   ID da venda local (SQLite)
+ *   valor           {number}   Valor em reais (ex: 49.90)
+ *   numero_venda    {string}   Número da venda (ex: LOJA1-PDV01-20250101-000001)
+ *   payment_method  {string}   'credit' | 'debit'
+ *   installments    {number}   Parcelas (crédito; padrão 1)
+ *   handle          {string}   Handle InfinitePay do merchant (opcional)
+ *   doc_number      {string}   CNPJ/CPF sem pontuação (opcional)
+ *
+ * @returns {{ sucesso, order_id, deeplink_url, valor_centavos, mensagem? }}
+ */
+ipcMain.handle('infinitetap:enviar', async (_e, {
+  venda_id, valor, numero_venda,
+  payment_method = 'credit', installments = 1,
+  handle = '', doc_number = '',
+}) => {
+  const token       = cfg('api_token');
+  const servidorUrl = cfg('servidor_url');
+  const lojaId      = parseInt(cfg('loja_id') || '1');
+  const numeroPdv   = cfg('numero_pdv') || '01';
+
+  logger.info('[TAP IPC] infinitetap:enviar CHAMADO', {
+    venda_id, valor, payment_method, installments,
+  });
+
+  if (!token || !servidorUrl) {
+    return { sucesso: false, mensagem: 'Servidor não configurado. Acesse Configurações do PDV.' };
+  }
+  if (!valor || valor <= 0) {
+    return { sucesso: false, mensagem: 'Valor inválido: ' + valor };
+  }
+  if (!venda_id) {
+    return { sucesso: false, mensagem: 'venda_id não informado.' };
+  }
+
+  const requestBody = {
+    venda_id,
+    valor,
+    loja_id:        lojaId,
+    numero_pdv:     numeroPdv,
+    numero_venda:   numero_venda   || '',
+    payment_method,
+    installments,
+    handle:         handle         || '',
+    doc_number:     doc_number     || '',
+    app_referrer:   'PDVix',
+  };
+
+  try {
+    const resp = await axios.post(
+      `${servidorUrl}/api/pdv/tap/criar`,
+      requestBody,
+      axiosOpts({
+        params:  { token },
+        timeout: 15_000,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+    if (resp.data.status !== 'success') {
+      const msg = resp.data.message || resp.data.mensagem || 'Erro ao criar transação InfiniteTap.';
+      logger.error('[TAP IPC] Erro servidor:', msg);
+      return { sucesso: false, mensagem: msg };
+    }
+
+    const d = resp.data.data || {};
+    logger.info('[TAP IPC] ✓ InfiniteTap criado. order_id:', d.order_id);
+
+    // Salva mapeamento venda → PDV para o WebSocket rotear a confirmação
+    if (numero_venda) {
+      try {
+        db.prepare('INSERT OR REPLACE INTO config (chave, valor) VALUES (?, ?)')
+          .run(`venda_pdv:${numero_venda}`, `${lojaId}:${numeroPdv}`);
+      } catch (e) {
+        logger.warn('[TAP IPC] Falha ao salvar mapeamento local:', e.message);
+      }
+    }
+
+    return { sucesso: true, ...d };
+
+  } catch (err) {
+    const httpStatus = err.response?.status ?? null;
+    const serverMsg  = err.response?.data?.message || err.response?.data?.mensagem || null;
+    const mensagem   = serverMsg || err.message || 'Erro de conexão.';
+
+    logger.error('[TAP IPC] Exceção ao criar InfiniteTap', { httpStatus, mensagem });
+
+    let msgAmigavel = mensagem;
+    if (!httpStatus) {
+      msgAmigavel = `Sem resposta do servidor (${err.code || 'timeout'}).`;
+    } else if (httpStatus === 422) {
+      msgAmigavel = `Dados inválidos: ${mensagem}`;
+    } else if (httpStatus >= 500) {
+      msgAmigavel = `Erro no servidor (HTTP ${httpStatus}): ${mensagem}`;
+    }
+
+    return { sucesso: false, mensagem: msgAmigavel };
+  }
+});
+
+/**
+ * infinitetap:cancelar
+ * Cancela uma order pendente (operador desistiu antes de apresentar o celular).
+ */
+ipcMain.handle('infinitetap:cancelar', async (_e, { order_id }) => {
+  const token       = cfg('api_token');
+  const servidorUrl = cfg('servidor_url');
+
+  if (!token || !servidorUrl) return { sucesso: false, mensagem: 'Servidor não configurado.' };
+
+  try {
+    const resp = await axios.post(
+      `${servidorUrl}/api/pdv/tap/cancelar`,
+      { order_id },
+      axiosOpts({
+        params:  { token },
+        timeout: 10_000,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+    const ok = resp.data.status === 'success';
+    logger.info(`[TAP IPC] cancelar order_id=${order_id} → ${ok ? 'cancelado' : 'falhou'}`);
+    return { sucesso: ok, mensagem: resp.data.message || resp.data.mensagem || '' };
+
+  } catch (err) {
+    logger.warn('[TAP IPC] cancelar falhou: ' + (err.message || 'Erro'));
+    return { sucesso: false, mensagem: err.message };
+  }
+});
+
+/**
+ * infinitetap:status
+ * Polling de fallback — consulta status de uma order no servidor.
+ * Usar apenas se o WebSocket estiver offline.
+ */
+ipcMain.handle('infinitetap:status', async (_e, { order_id }) => {
+  const token       = cfg('api_token');
+  const servidorUrl = cfg('servidor_url');
+
+  if (!token || !servidorUrl) return null;
+
+  try {
+    const resp = await axios.get(
+      `${servidorUrl}/api/pdv/tap/status`,
+      axiosOpts({ params: { token, order_id }, timeout: 8_000 })
+    );
+    return resp.data.status === 'success' ? resp.data.data : null;
+  } catch {
+    return null;
+  }
+});
+
+// ─── WebSocket: tratar eventos InfiniteTap (adicione ao wsProcessarEvento) ───
+//
+// Os eventos pdv:pagamento_confirmado e pdv:pagamento_cancelado já são
+// tratados pelo switch existente em wsProcessarEvento(). O payload agora
+// inclui o campo `gateway: 'infinitetap'` para que o renderer diferencie
+// a origem (InfiniteTap vs Pagar.me) se necessário.
+//
+// Não é necessário adicionar novos cases no switch — os eventos existentes
+// já repassam o payload ao renderer via:
+//   mainWindow.webContents.send('pagarme:confirmado', rest.payload ?? rest)
+//   mainWindow.webContents.send('pagarme:cancelado',  rest.payload ?? rest)
+//
+// O renderer (venda.js) pode checar payload.gateway === 'infinitetap'
+// para exibir a mensagem correta.
 // ═══════════════════════════════════════════════════════════════════════════════
 // SYNC — endpoint dedicado com token (sem sessão PHP)
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1375,11 +1758,14 @@ async function syncCancelamentosOffline() {
   const servidorUrl = cfg('servidor_url');
   if (!token || !servidorUrl) return;
 
+  // Só sincroniza cancelamentos cujas vendas já foram enviadas ao servidor
+  // (têm id_servidor preenchido). Os demais aguardam a venda subir primeiro.
   const pendentes = db.prepare(`
-    SELECT c.*, v.numero_venda
+    SELECT c.*, v.numero_venda, v.id_servidor AS venda_id_servidor
     FROM cancelamentos c
     LEFT JOIN vendas v ON v.id = c.venda_id
     WHERE c.sincronizado = 0
+      AND (c.venda_id IS NULL OR v.id_servidor IS NOT NULL)
     ORDER BY c.cancelado_em ASC
   `).all();
 
@@ -1392,7 +1778,8 @@ async function syncCancelamentosOffline() {
     cancelamentos: pendentes.map(c => ({
       local_id:      c.id,                             // ID local SQLite — rastreia confirmação
       tipo:          c.tipo,
-      venda_id:      c.venda_id,
+      // envia o ID da venda no SERVIDOR (id_servidor), não o ID local SQLite
+      venda_id:      c.venda_id_servidor ?? c.venda_id,
       venda_item_id: c.item_id || null,                // item_id (local) → venda_item_id (servidor)
       loja_id:       lojaId,
       numero_pdv:    numeroPdv,

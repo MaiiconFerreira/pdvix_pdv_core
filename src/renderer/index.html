@@ -272,6 +272,54 @@ td.num{text-align:right}
 .pix-err-box.show{display:block}
 
 /* ═══════════════════════════════════════════════════════════
+   STONE POS OVERLAY
+════════════════════════════════════════════════════════════ */
+#pos-overlay{
+  position:fixed;inset:0;background:rgba(10,15,30,.92);
+  display:none;align-items:center;justify-content:center;
+  z-index:900;padding:20px;
+  backdrop-filter:blur(4px);
+}
+#pos-overlay.open{display:flex}
+.pos-card{
+  background:#fff;border-radius:20px;box-shadow:0 24px 64px rgba(0,0,0,.35);
+  width:100%;max-width:400px;overflow:hidden;animation:fadeUp .2s ease both;
+}
+.pos-card-header{
+  padding:20px 24px 16px;color:#fff;
+}
+.pos-card-header.debito{ background:linear-gradient(135deg,#0D9488,#0F766E); }
+.pos-card-header.credito{ background:linear-gradient(135deg,#7C3AED,#5B21B6); }
+.pos-card-header.pos_pix{ background:linear-gradient(135deg,#059669,#065F46); }
+.pos-card-header .title{font-size:18px;font-weight:800;margin-bottom:2px}
+.pos-card-header .subtitle{font-size:12px;opacity:.8}
+.pos-body{padding:20px 24px;}
+.pos-device-info{
+  background:#F1F5F9;border-radius:8px;padding:10px 14px;
+  font-size:12px;color:var(--txt2);margin-bottom:14px;
+  display:flex;align-items:center;gap:8px;font-family:var(--fmono);
+}
+.pos-device-info .device-label{font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--txt3)}
+.pos-valor{font-family:var(--fmono);font-size:28px;font-weight:900;color:#1E293B;margin:12px 0 4px;text-align:center}
+.pos-status-badge{
+  padding:8px 14px;border-radius:20px;font-size:12px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.06em;display:block;
+  text-align:center;margin-bottom:14px;
+}
+.pos-status-badge.enviando{background:#FEF3C7;color:#92400E}
+.pos-status-badge.aguardando{background:#DBEAFE;color:#1E40AF}
+.pos-status-badge.confirmado{background:var(--grn-lt);color:#065F46}
+.pos-status-badge.erro{background:var(--red-lt);color:var(--red)}
+.pos-waiting-msg{font-size:13px;color:var(--txt3);text-align:center;margin-bottom:14px;line-height:1.5}
+.pos-err-box{
+  background:var(--red-lt);border:1.5px solid var(--red);
+  border-radius:var(--r-sm);padding:12px 16px;margin-bottom:14px;
+  font-size:13px;color:var(--red);font-weight:500;display:none;
+}
+.pos-err-box.show{display:block}
+.pos-footer{padding:14px 24px 20px;display:flex;gap:10px;border-top:1px solid var(--border)}
+
+/* ═══════════════════════════════════════════════════════════
    OUTROS MODALS (mantidos iguais)
 ════════════════════════════════════════════════════════════ */
 #modal-busca .modal-card{max-width:580px}
@@ -439,11 +487,13 @@ td.num{text-align:right}
         <div class="key-hint"><kbd>F6</kbd> Desc. venda</div>
         <div class="key-hint"><kbd>F7</kbd> Desc. item</div>
         <div class="key-hint"><kbd>Del</kbd> Rem. item</div>
+        <div class="key-hint"><kbd>F9</kbd> Maquininha</div>
         <div class="key-hint"><kbd>F10</kbd> Cancelar</div>
       </div>
       <div class="panel-divider"></div>
       <div class="panel-actions">
         <div class="panel-actions-title">Caixa</div>
+        <button class="btn btn-ghost btn-full" id="btn-config-pdv">⚙️ Maquininha (F9)</button>
         <button class="btn btn-ghost btn-full" id="btn-sangria">💵 Sangria</button>
         <button class="btn btn-ghost btn-full" id="btn-fechamento">🔒 Fechar Caixa</button>
         <button class="btn btn-ghost btn-full" id="btn-pdv-logout">↩ Sair</button>
@@ -465,6 +515,53 @@ td.num{text-align:right}
       <span id="ftr-vendaid" style="font-family:var(--fmono);color:var(--txt3)"></span>
     </div>
   </footer>
+</div>
+
+<!-- ═════════════════════════════════════════════════════════
+     MODAL: CONFIGURAÇÕES DO PDV  (F9)
+══════════════════════════════════════════════════════════ -->
+<div class="overlay" id="modal-config-pdv">
+  <div class="modal-card" style="max-width:440px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">⚙️ Configurações do PDV</div>
+        <div class="modal-subtitle">Serial da maquininha Stone POS</div>
+      </div>
+      <button class="modal-close" data-close="modal-config-pdv">✕</button>
+    </div>
+    <div class="modal-body">
+      <label style="display:block;font-size:11px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">
+        Serial da Maquininha (device_serial_number)
+      </label>
+      <input id="cfg-serial" type="text"
+        placeholder="Ex: POS123456789"
+        autocomplete="off" spellcheck="false"
+        style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--surf2);font-family:var(--fmono);font-size:14px;letter-spacing:.5px;color:var(--txt);box-sizing:border-box;">
+      <p style="font-size:11px;color:var(--txt3);margin:6px 0 0;">
+        Número serial encontrado na etiqueta traseira ou em
+        <em>Configurações → Sobre</em> na maquininha.
+      </p>
+
+      <div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--border);">
+        <label style="display:block;font-size:11px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">
+          Tipo Padrão (opcional)
+        </label>
+        <select id="cfg-pos-tipo"
+          style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--surf2);font-size:13px;color:var(--txt);box-sizing:border-box;">
+          <option value="">Operador escolhe na hora</option>
+          <option value="debit">Débito</option>
+          <option value="credit">Crédito</option>
+          <option value="pix">PIX na maquininha</option>
+        </select>
+      </div>
+
+      <div id="cfg-pdv-status" style="margin-top:12px;font-size:12px;display:none;padding:8px 12px;border-radius:6px;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" data-close="modal-config-pdv">Cancelar</button>
+      <button class="btn btn-primary" id="btn-cfg-pdv-salvar">💾 Salvar</button>
+    </div>
+  </div>
 </div>
 
 <!-- ═════════════════════════════════════════════════════════
@@ -734,6 +831,36 @@ td.num{text-align:right}
 </div>
 
 <!-- ═════════════════════════════════════════════════════════
+     STONE POS OVERLAY — Maquininha (débito / crédito / POS PIX)
+══════════════════════════════════════════════════════════ -->
+<div id="pos-overlay">
+  <div class="pos-card">
+    <div class="pos-card-header debito" id="pos-card-header">
+      <div class="title" id="pos-header-title">💳 Pagamento POS</div>
+      <div class="subtitle" id="pos-header-subtitle">Enviando para a maquininha…</div>
+    </div>
+    <div class="pos-body">
+      <div class="pos-device-info">
+        <div>
+          <div class="device-label">Maquininha Stone</div>
+          <div id="pos-device-serial">—</div>
+        </div>
+      </div>
+      <div class="pos-valor" id="pos-valor-display"></div>
+      <div class="pos-status-badge enviando" id="pos-status-badge">Enviando…</div>
+      <div class="pos-waiting-msg" id="pos-waiting-msg">
+        Aguarde enquanto enviamos o pedido para a maquininha.<br>
+        <strong id="pos-instrucao">Apresente o cartão ao cliente.</strong>
+      </div>
+      <div class="pos-err-box" id="pos-err-box"></div>
+    </div>
+    <div class="pos-footer">
+      <button class="btn btn-ghost btn-full" id="btn-pos-cancelar">✕ Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═════════════════════════════════════════════════════════
      JAVASCRIPT
 ══════════════════════════════════════════════════════════ -->
 <script>
@@ -826,6 +953,16 @@ const PIX = {
   confirmado: false,
 };
 
+/* ── Stone POS state ────────────────────────────────────── */
+const POS = {
+  ativo:      false,
+  orderId:    null,
+  tipo:       null,   // 'debit' | 'credit' | 'pix'
+  valor:      0,
+  timer:      null,   // timeout de segurança (3 min)
+  confirmado: false,
+};
+
 /* ══════════════════════════════════════════════════════════
    DOM REFS
 ═══════════════════════════════════════════════════════════ */
@@ -888,47 +1025,58 @@ async function init() {
     }
   });
 
-  // ── PIX: confirmação via WebSocket ───────────────────────────────────────
+  // ── PIX / POS: confirmação via WebSocket ─────────────────────────────────
   // Este listener recebe eventos do processo principal quando o webhook do
   // Pagar.me notifica que o pagamento foi confirmado/cancelado.
   window.pdv.onPagarme((tipo, payload) => {
-    LOG.pix('onPagarme evento recebido:', tipo, JSON.stringify(payload));
+    LOG.info('onPagarme evento recebido:', tipo, JSON.stringify(payload));
 
     if (tipo === 'confirmado') {
-      LOG.pix('Pagamento confirmado via WS! order_id:', payload?.order_id || payload?.order_id);
-      // Verifica se o PIX ativo é deste pedido
+      // POS tem prioridade — se ativo, confirma como POS
+      if (POS.ativo && !POS.confirmado) {
+        LOG.info('[POS] Confirmação via WS! order_id:', payload?.order_id);
+        const wsOrderId = payload?.order_id || '';
+        if (!wsOrderId || wsOrderId === POS.orderId) {
+          _onPosConfirmado(payload);
+        }
+        return;
+      }
+      // Senão, tenta PIX
       if (PIX.ativo && !PIX.confirmado) {
+        LOG.pix('Confirmação WS matched! Finalizando venda...');
         const wsOrderId = payload?.order_id || '';
         if (!wsOrderId || wsOrderId === PIX.orderId) {
-          LOG.pix('Confirmação WS matched! Finalizando venda...');
           _onPixConfirmado(wsOrderId || PIX.orderId);
-        } else {
-          LOG.pix('WS order_id', wsOrderId, 'não bate com PIX ativo', PIX.orderId, '— ignorando');
         }
       }
     } else if (tipo === 'cancelado') {
-      LOG.pix('PIX cancelado via WS');
-      if (PIX.ativo) {
+      if (POS.ativo) {
+        LOG.info('[POS] Cancelado/recusado via WS');
+        _posLimparTimer();
+        _posSetStatus('erro', 'Pagamento recusado pela maquininha.');
+        document.getElementById('pos-err-box').textContent = payload?.mensagem || 'Pagamento recusado ou cancelado na maquininha.';
+        document.getElementById('pos-err-box').classList.add('show');
+        POS.ativo = false; POS.orderId = null;
+      } else if (PIX.ativo) {
+        LOG.pix('PIX cancelado via WS');
         _pixLimparTimers();
         _pixSetStatus('erro', 'PIX cancelado pelo servidor.');
-        PIX.ativo = false;
-        PIX.orderId = null;
+        PIX.ativo = false; PIX.orderId = null;
       }
     } else if (tipo === 'pendente') {
-      // QR Code entregue via WS (alternativo ao retorno direto da API)
       LOG.pix('Payload PIX pendente via WS:', JSON.stringify(payload));
     }
   });
 
   // Comandos remotos
-  window.pdv.onComandoRemoto((tipo, payload) => {
+  window.pdv.onComandoRemoto(async (tipo, payload) => {
     LOG.info('Comando remoto recebido:', tipo, JSON.stringify(payload));
     if (tipo === 'cancelar_venda') {
       toast('⚡ Comando remoto: cancelar venda #' + (payload?.venda_id || ''), 'warn', 5000);
     } else if (tipo === 'fechar_caixa') {
       toast('⚡ Comando remoto: fechar caixa.', 'warn', 5000);
     } else if (tipo === 'enviar_comanda') {
-      toast('📋 Comanda recebida!', 'ok', 3000);
+      await carregarComanda(payload);
     }
   });
 
@@ -1214,6 +1362,73 @@ function updateTotals() {
   D.valSubtotal.textContent = BRL(sub);
   D.valDesconto.textContent = '− ' + BRL(S.desconto);
   D.valTotal.textContent    = BRL(total);
+}
+
+/* ══════════════════════════════════════════════════════════
+   COMANDA — carrega itens recebidos via WebSocket no PDV
+═══════════════════════════════════════════════════════════ */
+async function carregarComanda(payload) {
+  // Aceita { numero, cliente_nome, itens } direto ou { tipo, payload: {...} }
+  const dados = (payload && payload.payload) ? payload.payload : payload;
+  const { numero, cliente_nome, itens } = dados;
+
+  if (!Array.isArray(itens) || !itens.length) {
+    LOG.warn('carregarComanda: payload sem itens', JSON.stringify(dados));
+    toast('Comanda sem itens recebida.', 'warn');
+    return;
+  }
+
+  // Abre venda automaticamente se não houver uma aberta
+  if (!S.vendaAberta) {
+    S.vendaAberta = true;
+    S.itens = []; S.desconto = 0; S.acrescimo = 0;
+    S.clienteId = null; S.clienteCpf = ''; S.clienteNome = 'CONSUMIDOR FINAL';
+    S.selectedIdx = -1; S.vendaId = null; S.numeroVenda = null;
+    S.pgtoFeitos = [];
+    if (D.inputCodigo) D.inputCodigo.disabled = false;
+    if (D.hdrCliente)  D.hdrCliente.textContent = 'CONSUMIDOR FINAL';
+    renderItens();
+    updateTotals();
+  }
+
+  if (cliente_nome && cliente_nome !== 'CONSUMIDOR FINAL') {
+    S.clienteNome = cliente_nome;
+    if (D.hdrCliente) D.hdrCliente.textContent = cliente_nome;
+  }
+
+  let adicionados = 0;
+  for (const item of itens) {
+    if (!item.produto_id || !item.quantidade) continue;
+    const preco    = parseFloat(item.valor_unitario || 0);
+    const qtd      = parseFloat(item.quantidade || 1);
+    const existing = S.itens.findIndex(i => i.produto_id === item.produto_id);
+    if (existing >= 0) {
+      S.itens[existing].quantidade += qtd;
+    } else {
+      S.itens.push({
+        produto_id:          item.produto_id,
+        produto_nome:        item.produto_nome || `Produto #${item.produto_id}`,
+        preco,
+        valor_unitario:      preco,
+        quantidade:          qtd,
+        desconto_item:       0,
+        codigo_barras_usado: '',
+        unidade_base:        item.unidade_base  || 'UN',
+        unidade_origem:      item.unidade_origem || 'UN',
+        uid:                 Date.now() + item.produto_id,
+      });
+    }
+    adicionados++;
+  }
+
+  S.selectedIdx = S.itens.length > 0 ? 0 : -1;
+  renderItens();
+  updateTotals();
+
+  const msg = `✓ Comanda ${numero || ''} — ${adicionados} item(ns) carregado(s)`;
+  if (D.hdrLastItem) D.hdrLastItem.textContent = msg;
+  LOG.info('carregarComanda concluída:', msg);
+  toast(`📋 ${msg}`, 'ok', 4000);
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -1518,6 +1733,52 @@ async function adicionarPagamento() {
     // Fecha o modal de pagamento e abre o overlay PIX
     closeModal('modal-pagamento');
     await iniciarFluxoPix(v);
+    return;
+  }
+
+  // ════════════════════════════════════════════════════
+  // PAGAMENTO CARTÃO — Roteamento Automático (Stone ou InfiniteTap)
+  // ════════════════════════════════════════════════════
+  if (_pgtoTipoSelecionado === 'pos_debito' || _pgtoTipoSelecionado === 'pos_credito' || _pgtoTipoSelecionado === 'pos_pix') {
+    LOG.info('[GATEWAY] Iniciando fluxo de cartão. tipo:', _pgtoTipoSelecionado, 'valor:', v);
+
+    if (POS.ativo) {
+      toast('Já existe um pagamento em andamento. Cancele antes de iniciar outro.', 'warn');
+      return;
+    }
+
+    // Garante venda local
+    if (!S.vendaId) {
+      const r = await window.pdv.vendaCriar();
+      if (!r.sucesso) { toast('Erro ao criar venda.', 'err'); return; }
+      S.vendaId = r.venda_id; S.numeroVenda = r.numero_venda;
+      document.getElementById('pgto-num-venda').textContent   = S.numeroVenda;
+      document.getElementById('pgto-num-display').textContent = S.numeroVenda;
+      D.ftrVendaId.textContent = '#' + S.numeroVenda;
+      if (S.clienteCpf) {
+        await window.pdv.vendaAtualizar({ venda_id: S.vendaId, cliente_cpf: S.clienteCpf, cliente_nome: S.clienteNome, cliente_id: S.clienteId });
+      }
+    }
+
+    closeModal('modal-pagamento');
+
+    const tipoPos = _pgtoTipoSelecionado === 'pos_debito' ? 'debit'
+                  : _pgtoTipoSelecionado === 'pos_credito' ? 'credit'
+                  : 'pix';
+
+    // ── LÊ A CONFIGURAÇÃO PARA DECIDIR O GATEWAY ──
+    const gateway = (await window.pdv.configGet('gateway_cartao')) || 'pagarme_pos';
+
+    if (gateway === 'infinitetap' && tipoPos !== 'pix') {
+      await iniciarFluxoTap(tipoPos, v);
+    } else {
+      const deviceSerial = await window.pdv.configGet('device_serial_number');
+      if (!deviceSerial) {
+        toast('Maquininha não configurada. Cadastre o serial em Configurações.', 'err', 6000);
+        return;
+      }
+      await iniciarFluxoPOS(tipoPos, v, deviceSerial);
+    }
     return;
   }
 
@@ -1924,6 +2185,47 @@ async function cancelarPix() {
 document.getElementById('btn-pix-cancelar').addEventListener('click', cancelarPix);
 
 /* ══════════════════════════════════════════════════════════
+   CONFIG PDV (F9) — serial da maquininha Stone POS
+═══════════════════════════════════════════════════════════ */
+async function abrirConfigPdv() {
+  const serial  = await window.pdv.configGet('device_serial_number') || '';
+  const posTipo = await window.pdv.configGet('pos_tipo_padrao')      || '';
+  document.getElementById('cfg-serial').value   = serial;
+  document.getElementById('cfg-pos-tipo').value = posTipo;
+  const st = document.getElementById('cfg-pdv-status');
+  st.style.display = 'none'; st.textContent = '';
+  openModal('modal-config-pdv');
+  setTimeout(() => document.getElementById('cfg-serial').focus(), 120);
+}
+
+document.getElementById('btn-config-pdv').addEventListener('click', abrirConfigPdv);
+
+document.getElementById('btn-cfg-pdv-salvar').addEventListener('click', async () => {
+  const serial   = document.getElementById('cfg-serial').value.trim();
+  const posTipo  = document.getElementById('cfg-pos-tipo').value;
+  const statusEl = document.getElementById('cfg-pdv-status');
+
+  if (!serial) {
+    statusEl.textContent  = '⚠ Informe o serial da maquininha.';
+    statusEl.style.cssText = 'display:block;color:#dc2626;background:#fef2f2;border:1px solid #fecaca;';
+    return;
+  }
+
+  const btn = document.getElementById('btn-cfg-pdv-salvar');
+  btn.disabled = true; btn.textContent = 'Salvando…';
+
+  await window.pdv.configSet({ chave: 'device_serial_number', valor: serial });
+  await window.pdv.configSet({ chave: 'pos_tipo_padrao',      valor: posTipo });
+
+  btn.disabled = false; btn.textContent = '💾 Salvar';
+  statusEl.textContent  = '✓ Configurações salvas com sucesso!';
+  statusEl.style.cssText = 'display:block;color:#16a34a;background:#f0fdf4;border:1px solid #bbf7d0;font-weight:600;';
+  setTimeout(() => closeModal('modal-config-pdv'), 1400);
+  toast('⚙️ Maquininha configurada: ' + serial, 'ok', 4000);
+  LOG.info('Config PDV salva — serial:', serial, 'tipo:', posTipo || 'operador_escolhe');
+});
+
+/* ══════════════════════════════════════════════════════════
    SANGRIA
 ═══════════════════════════════════════════════════════════ */
 document.getElementById('btn-sangria').addEventListener('click', () => {
@@ -2062,6 +2364,12 @@ document.addEventListener('keydown', (e) => {
     return;
   }
 
+  // POS ativo: só Escape (para cancelar)
+  if (POS.ativo) {
+    if (e.key === 'Escape') { e.preventDefault(); cancelarPOS(); }
+    return;
+  }
+
   const anyOpen = document.querySelector('.overlay.open');
   if (anyOpen && anyOpen.id !== 'modal-supervisor') {
     if (e.key === 'Escape') {
@@ -2124,6 +2432,7 @@ document.addEventListener('keydown', (e) => {
       });
       break;
     case 'F10': e.preventDefault(); cancelarVenda(); break;
+    case 'F9':  e.preventDefault(); abrirConfigPdv(); break;
     case 'F8':  e.preventDefault(); abrirBusca(); break;
     case 'ArrowUp':
       if (document.activeElement === D.inputCodigo || document.activeElement === D.inputQtd) {
@@ -2186,6 +2495,304 @@ function clearInputs() {
   D.inputCodigo.value = '';
   D.inputQtd.value    = '';
 }
+
+/* ══════════════════════════════════════════════════════════
+   STONE POS — FLUXO COMPLETO
+   Tipos: 'debit' | 'credit' | 'pix'
+   Confirmação chega via WebSocket → onPagarme('confirmado')
+═══════════════════════════════════════════════════════════ */
+
+async function iniciarFluxoPOS(tipo, valor, deviceSerial) {
+  LOG.info('[POS] === iniciarFluxoPOS() ===', tipo, valor, deviceSerial);
+
+  POS.ativo      = true;
+  POS.confirmado = false;
+  POS.tipo       = tipo;
+  POS.valor      = valor;
+  POS.orderId    = null;
+
+  // ── Configura visual do overlay ───────────────────────────────────────────
+  const labels = { debit: '💳 Débito', credit: '💳 Crédito', pix: '📲 PIX na Maquininha' };
+  const instrucoes = {
+    debit: 'Apresente o cartão de débito ao cliente.',
+    credit: 'Apresente o cartão de crédito ao cliente.',
+    pix: 'O cliente deve escanear o QR Code na maquininha.',
+  };
+  const headerClasses = { debit: 'debito', credit: 'credito', pix: 'pos_pix' };
+
+  const header = document.getElementById('pos-card-header');
+  header.className = 'pos-card-header ' + (headerClasses[tipo] || 'debito');
+  document.getElementById('pos-header-title').textContent   = labels[tipo] || 'Pagamento POS';
+  document.getElementById('pos-header-subtitle').textContent = 'Enviando para a maquininha…';
+  document.getElementById('pos-device-serial').textContent  = deviceSerial;
+  document.getElementById('pos-valor-display').textContent  = BRL(valor);
+  document.getElementById('pos-instrucao').textContent      = instrucoes[tipo] || '';
+  document.getElementById('pos-waiting-msg').style.display  = 'block';
+  document.getElementById('pos-err-box').classList.remove('show');
+  document.getElementById('btn-pos-cancelar').disabled      = false;
+  _posSetStatus('enviando', 'Enviando…');
+  document.getElementById('pos-overlay').classList.add('open');
+
+  // ── Chama API do servidor ─────────────────────────────────────────────────
+  const params = {
+    venda_id:             S.vendaId,
+    valor,
+    numero_venda:         S.numeroVenda || '',
+    device_serial_number: deviceSerial,
+    tipo,
+    installments:         1,
+    installment_type:     'merchant',
+    display_name:         'Venda #' + (S.numeroVenda || S.vendaId),
+    print_receipt:        true,
+    cliente_nome:         S.clienteNome !== 'CONSUMIDOR FINAL' ? S.clienteNome : '',
+    cliente_cpf:          S.clienteCpf || '',
+  };
+
+  LOG.info('[POS] Chamando pagarmeEnviarPos:', JSON.stringify(params));
+
+  let res;
+  try {
+    res = await window.pdv.pagarmeEnviarPos(params);
+  } catch (ipcErr) {
+    LOG.err('[POS] Exceção IPC:', ipcErr);
+    POS.ativo = false;
+    _posSetStatus('erro', 'Erro de comunicação');
+    _posMostrarErro('Erro interno (IPC): ' + (ipcErr?.message || String(ipcErr)));
+    return;
+  }
+
+  LOG.info('[POS] Resposta pagarmeEnviarPos:', JSON.stringify(res));
+
+  if (!res?.sucesso) {
+    POS.ativo = false;
+    _posSetStatus('erro', 'Falha ao enviar');
+    _posMostrarErro(res?.mensagem || 'Erro desconhecido ao enviar para maquininha.');
+    return;
+  }
+
+  POS.orderId = res.order_id;
+  document.getElementById('pos-header-subtitle').textContent = 'Aguardando pagamento na maquininha…';
+  _posSetStatus('aguardando', 'Aguardando pagamento');
+
+  LOG.info('[POS] Pedido criado. order_id:', res.order_id, '— aguardando webhook/WS');
+
+  // Timeout de segurança: 3 minutos
+  POS.timer = setTimeout(() => {
+    if (POS.ativo) {
+      POS.ativo = false;
+      _posSetStatus('erro', 'Tempo esgotado');
+      _posMostrarErro('Tempo limite de 3 minutos atingido. Verifique a maquininha e tente novamente.');
+      LOG.err('[POS] Timeout de 3 minutos atingido. order_id:', POS.orderId);
+    }
+  }, 180_000);
+}
+
+async function iniciarFluxoTap(tipo, valor) {
+  LOG.info('[TAP] === iniciarFluxoTap() ===', tipo, valor);
+
+  POS.ativo      = true;
+  POS.confirmado = false;
+  POS.tipo       = tipo;
+  POS.valor      = valor;
+  POS.orderId    = null;
+
+  const installments = tipo === 'credit' ? parseInt((await window.pdv.configGet('tap_installments')) || '1') : 1;
+  const tipoLabel = tipo === 'debit' ? 'DÉBITO' : `CRÉDITO${installments > 1 ? ' ' + installments + 'x' : ''}`;
+
+  // Configura visual usando o mesmo overlay do POS, mudando para a identidade visual do Tap
+  const header = document.getElementById('pos-card-header');
+  header.className = 'pos-card-header';
+  header.style.background = 'linear-gradient(135deg, #00c896, #007d5e)'; 
+
+  document.getElementById('pos-header-title').textContent   = '📱 InfiniteTap — ' + tipoLabel;
+  document.getElementById('pos-header-subtitle').textContent = 'Gerando Link de Pagamento...';
+  document.getElementById('pos-device-serial').textContent  = 'App Celular Operador';
+  document.getElementById('pos-valor-display').textContent  = BRL(valor);
+  document.getElementById('pos-instrucao').innerHTML        = 'Aguarde...';
+  document.getElementById('pos-waiting-msg').style.display  = 'block';
+  document.getElementById('pos-err-box').classList.remove('show');
+  document.getElementById('btn-pos-cancelar').disabled      = false;
+
+  _posSetStatus('enviando', 'Gerando...');
+  document.getElementById('pos-overlay').classList.add('open');
+
+  let res;
+  try {
+    res = await window.pdv.infinitetapEnviar({
+      venda_id:       S.vendaId,
+      valor:          valor,
+      numero_venda:   S.numeroVenda || '',
+      payment_method: tipo,
+      installments,
+    });
+  } catch (e) {
+    POS.ativo = false;
+    _posSetStatus('erro', 'Erro de API');
+    _posMostrarErro(String(e.message));
+    return;
+  }
+
+  if (!res?.sucesso) {
+    POS.ativo = false;
+    _posSetStatus('erro', 'Falha no Tap');
+    _posMostrarErro(res?.mensagem || 'Erro ao iniciar InfiniteTap.');
+    return;
+  }
+
+  POS.orderId = res.order_id;
+  _posSetStatus('aguardando', 'Aguardando Pagamento');
+  document.getElementById('pos-header-subtitle').textContent = 'Escaneie ou copie o link no celular:';
+
+  // Exibe o deeplink. (Pode ser substituído por renderização de QR Code)
+  document.getElementById('pos-instrucao').innerHTML = `
+    Escaneie o QR com o celular do operador.<br>
+    <div style="background:#fff;color:#000;padding:8px;border-radius:4px;font-size:0.75rem;word-break:break-all;margin:10px auto;">
+      ${res.deeplink_url}
+    </div>
+    <span style="color:#00c896;font-weight:bold;">Toque o cartão do cliente no celular.</span>
+  `;
+
+  POS.timer = setTimeout(() => {
+    if (POS.ativo) {
+      POS.ativo = false;
+      _posSetStatus('erro', 'Tempo esgotado');
+      _posMostrarErro('Tempo limite InfiniteTap excedido. Tente novamente.');
+    }
+  }, 180_000);
+}
+
+function _posSetStatus(tipo, texto) {
+  const badge = document.getElementById('pos-status-badge');
+  badge.className = 'pos-status-badge ' + tipo;
+  badge.textContent = texto;
+}
+
+function _posMostrarErro(msg) {
+  LOG.err('[POS] Erro exibido ao operador:', msg);
+  const errBox = document.getElementById('pos-err-box');
+  errBox.textContent = '⚠ ' + msg;
+  errBox.classList.add('show');
+  document.getElementById('pos-waiting-msg').style.display = 'none';
+  document.getElementById('pos-header-subtitle').textContent = 'Erro no pagamento';
+}
+
+function _posLimparTimer() {
+  if (POS.timer) { clearTimeout(POS.timer); POS.timer = null; }
+}
+
+function fecharPosOverlay() {
+  LOG.info('[POS] Fechando overlay.');
+  _posLimparTimer(); // Para o cronômetro de timeout
+  document.getElementById('pos-overlay').classList.remove('open');
+  POS.ativo = false;
+}
+
+// Helper para limpar o timer e evitar vazamento de memória
+function _posLimparTimer() {
+  if (POS.timer) {
+    clearTimeout(POS.timer);
+    POS.timer = null;
+  }
+}
+
+async function cancelarPOS() {
+  LOG.info('[POS] Operador cancelou. orderId:', POS.orderId);
+  _posLimparTimer();
+  document.getElementById('btn-pos-cancelar').disabled = true;
+  document.getElementById('pos-header-subtitle').textContent = 'Cancelando…';
+
+  if (POS.orderId) {
+    try {
+      const gateway = (await window.pdv.configGet('gateway_cartao')) || 'pagarme_pos';
+      if (gateway === 'infinitetap') {
+         await window.pdv.infinitetapCancelar({ order_id: POS.orderId });
+         LOG.info('[TAP] Cancelamento enviado para servidor');
+      } else {
+         await window.pdv.pagarmeCancelarPos({ order_id: POS.orderId });
+         LOG.info('[POS] Cancelamento enviado para servidor');
+      }
+    } catch (e) {
+      LOG.err('[GATEWAY] Erro ao cancelar na API:', e.message);
+    }
+  }
+
+  POS.ativo      = false;
+  POS.confirmado = false;
+  POS.orderId    = null;
+
+  fecharPosOverlay();
+  toast('Pagamento cancelado. Escolha outra forma de pagamento.', 'warn', 4000);
+  abrirModalPagamento();
+}
+
+async function _onPosConfirmado(payload) {
+  if (POS.confirmado) {
+    LOG.info('[POS] _onPosConfirmado duplicata — ignorando');
+    return;
+  }
+  POS.confirmado = true;
+  _posLimparTimer();
+  POS.ativo = false;
+
+  LOG.info('[POS] === _onPosConfirmado ===');
+  LOG.info('[POS] payload:', JSON.stringify(payload));
+  LOG.info('[POS] vendaId:', S.vendaId, '| valor:', POS.valor, '| tipo:', POS.tipo);
+
+  _posSetStatus('confirmado', '✓ Pagamento confirmado!');
+  document.getElementById('pos-header-subtitle').textContent = 'Finalizando venda…';
+  document.getElementById('btn-pos-cancelar').disabled = true;
+
+  // Detecta tipo de pagamento (servidor pode enviar tipo_pagamento no payload)
+  const tipoPagamento = payload?.tipo_pagamento
+    || (POS.tipo === 'debit' ? 'pos_debito'
+      : POS.tipo === 'credit' ? 'pos_credito'
+      : 'pos_pix');
+
+  // 1. Registra pagamento local
+  LOG.info('[POS] Registrando pagamento local. tipo:', tipoPagamento);
+  const resPagto = await window.pdv.pagtoRegistrar({
+    venda_id:           S.vendaId,
+    tipo_pagamento:     tipoPagamento,
+    valor:              POS.valor,
+    referencia_externa: payload?.order_id || POS.orderId || '',
+  });
+  LOG.info('[POS] pagtoRegistrar:', JSON.stringify(resPagto));
+
+  if (!resPagto?.sucesso) {
+    LOG.err('[POS] Falha ao registrar pagamento:', resPagto?.mensagem);
+    toast('POS aprovado mas erro ao registrar: ' + (resPagto?.mensagem || ''), 'err', 8000);
+    fecharPosOverlay();
+    return;
+  }
+
+  // 2. Finaliza venda
+  LOG.info('[POS] Finalizando venda...');
+  const resVenda = await window.pdv.vendaFinalizar({
+    venda_id:  S.vendaId,
+    itens:     S.itens,
+    desconto:  S.desconto,
+    acrescimo: S.acrescimo,
+  });
+  LOG.info('[POS] vendaFinalizar:', JSON.stringify(resVenda));
+
+  fecharPosOverlay();
+
+  if (!resVenda?.sucesso) {
+    LOG.err('[POS] Falha ao finalizar venda:', resVenda?.mensagem);
+    toast('POS confirmado mas erro ao finalizar venda: ' + (resVenda?.mensagem || ''), 'err', 8000);
+    return;
+  }
+
+  const tipoLabel = tipoPagamento === 'pos_debito' ? 'Débito'
+                  : tipoPagamento === 'pos_credito' ? 'Crédito'
+                  : 'POS PIX';
+
+  toast(`✅ ${tipoLabel} confirmado! Venda ${S.numeroVenda || ''} finalizada. ${BRL(POS.valor)}`, 'ok', 5000);
+  LOG.info('[POS] === Venda POS finalizada com sucesso ===');
+  resetVenda();
+}
+
+document.getElementById('btn-pos-cancelar').addEventListener('click', cancelarPOS);
 
 /* ══════════════════════════════════════════════════════════
    BOOT

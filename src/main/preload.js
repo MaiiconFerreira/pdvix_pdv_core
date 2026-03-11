@@ -1,4 +1,5 @@
 // preload.js — PDVix Electron
+// ADICIONADO: pagarmeEnviarPos, pagarmeCancelarPos, pagarmeStatusPos
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('pdv', {
@@ -34,6 +35,34 @@ contextBridge.exposeInMainWorld('pdv', {
   pagarmeCriarPix:    (d) => ipcRenderer.invoke('pagarme:criarPix',    d),
   pagarmeCancelarPix: (d) => ipcRenderer.invoke('pagarme:cancelarPix', d),
   pagarmeStatusPix:   (d) => ipcRenderer.invoke('pagarme:statusPix',   d),
+
+  // ── Pagar.me — Stone POS (débito, crédito, PIX na maquininha) — NOVO ────────
+  // pagarmeEnviarPos({ venda_id, valor, numero_venda, device_serial_number,
+  //                    tipo, installments, installment_type, display_name,
+  //                    print_receipt, cliente_nome, cliente_cpf, cliente_email })
+  // Retorna: { sucesso, order_id, status, device_serial_number, tipo, mensagem? }
+  // O pagamento é confirmado via evento onPagarme('confirmado', data)
+  pagarmeEnviarPos:    (d) => ipcRenderer.invoke('pagarme:enviarPos',    d),
+  pagarmeCancelarPos:  (d) => ipcRenderer.invoke('pagarme:cancelarPos',  d),
+  pagarmeStatusPos:    (d) => ipcRenderer.invoke('pagarme:statusPos',    d),
+
+   // ── InfiniteTap — Tap to Pay via app InfinitePay no celular ─────────────────
+  //
+  // infinitetapEnviar({ venda_id, valor, numero_venda, payment_method,
+  //                     installments, handle?, doc_number? })
+  //   → Cria a transação no servidor e retorna o deeplink_url para QR Code.
+  //   → O PDV exibe o QR para o operador escanear com o celular.
+  //   → Confirmação chega via onPagarme('confirmado', data) com data.gateway === 'infinitetap'
+  //
+  // infinitetapCancelar({ order_id })
+  //   → Cancela a order pendente (operador desistiu).
+  //
+  // infinitetapStatus({ order_id })
+  //   → Polling de fallback para verificar status sem WebSocket.
+
+  infinitetapEnviar:  (d) => ipcRenderer.invoke('infinitetap:enviar',  d),
+  infinitetapCancelar:(d) => ipcRenderer.invoke('infinitetap:cancelar', d),
+  infinitetapStatus:  (d) => ipcRenderer.invoke('infinitetap:status',  d),
 
   // ── Cancelamentos ──────────────────────────────────────────────────────────
   cancelamentoRegistrar: (d) => ipcRenderer.invoke('cancelamento:registrar', d),
@@ -74,4 +103,5 @@ contextBridge.exposeInMainWorld('pdv', {
   },
 
   caixaSyncServidor: () => ipcRenderer.invoke('caixa:syncServidor'),
+  
 });
